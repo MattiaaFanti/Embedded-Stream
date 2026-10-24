@@ -1,20 +1,12 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#05070b">
-<title>Hattrick Sport — Video Fullscreen</title>
+<meta name="theme-color" content="#080b12">
+<title>Hattrick Sport - Player Focus</title>
 
 <style>
-:root {
-  color-scheme: dark;
-  --bg: #080b12;
-  --edge: #293548;
-  --text: #eef3fb;
-  --muted: #aab5c5;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -22,9 +14,9 @@
 html, body {
   margin: 0;
   min-height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: #080b12;
+  color: #eef3fb;
+  font-family: system-ui, Arial, sans-serif;
 }
 
 body {
@@ -33,77 +25,69 @@ body {
 
 .app {
   max-width: 1440px;
-  margin: 0 auto;
+  margin: auto;
 }
 
 header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   margin-bottom: 12px;
 }
 
 h1 {
-  font-size: clamp(17px, 2.4vw, 23px);
   margin: 0;
-  font-weight: 700;
+  font-size: 21px;
 }
 
-.sub {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 3px;
+.description {
+  margin-top: 4px;
+  color: #aab5c5;
+  font-size: 13px;
 }
 
-.form {
+.controls {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 10px;
 }
 
 input {
   flex: 1;
-  min-width: 0;
-  border: 1px solid var(--edge);
-  border-radius: 9px;
-  padding: 11px 12px;
-  background: #0e1420;
-  color: var(--text);
-  font-size: 13px;
+  min-width: 220px;
+  padding: 11px;
+  color: white;
+  background: #101725;
+  border: 1px solid #35445b;
+  border-radius: 8px;
 }
 
 button {
-  border: 1px solid #46536a;
-  border-radius: 9px;
-  padding: 10px 13px;
+  padding: 11px 15px;
+  border-radius: 8px;
+  border: 1px solid #52617a;
   background: #e8edf5;
   color: #101622;
-  font-size: 13px;
-  font-weight: 750;
+  font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
 }
 
-button:focus-visible,
-input:focus-visible {
-  outline: 2px solid #91b9ff;
-  outline-offset: 2px;
+#focusButton {
+  background: #245bc7;
+  color: white;
+  border-color: #5488e8;
 }
 
 .stage {
   position: relative;
   width: 100%;
   height: min(76vh, 850px);
-  min-height: 250px;
+  min-height: 260px;
   overflow: hidden;
   background: #000;
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  isolation: isolate;
+  border: 1px solid #293548;
+  border-radius: 9px;
 }
 
-.stage iframe {
+#siteFrame {
   position: absolute;
   inset: 0;
   display: block;
@@ -113,111 +97,33 @@ input:focus-visible {
   background: #000;
 }
 
-.overlay {
-  position: absolute;
-  z-index: 2147483647;
-  top: 10px;
-  right: 10px;
-}
-
-.overlay button {
-  background: rgba(10, 14, 22, .94);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, .85);
-  box-shadow: 0 6px 25px rgba(0, 0, 0, .4);
-  border-radius: 8px;
-  padding: 11px 13px;
-}
-
-.fsbtn {
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity .22s ease;
-}
-
-.fsbtn.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.sensor {
-  position: absolute;
-  z-index: 2147483646;
-  top: 0;
-  right: 0;
-  width: 170px;
-  height: 76px;
-  background: transparent;
-  touch-action: manipulation;
-}
-
-.help {
-  margin: 10px 2px 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.status {
-  color: #d4deec;
-  font-size: 12px;
-  min-height: 16px;
-  margin-top: 7px;
+#status {
+  margin-top: 10px;
+  min-height: 20px;
+  color: #d5deec;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 
-.stage:fullscreen,
-.stage:-webkit-full-screen {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: #000;
+.note {
+  margin-top: 8px;
+  color: #9ca9bb;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-body.is-fullscreen {
-  padding: 0;
-  overflow: hidden;
-}
-
-body.is-fullscreen .app {
-  max-width: none;
-  margin: 0;
-}
-
-body.is-fullscreen header,
-body.is-fullscreen .form,
-body.is-fullscreen .status,
-body.is-fullscreen .help {
-  display: none !important;
-}
-
-@media (max-width: 700px) {
+@media (max-width: 600px) {
   body {
-    padding: 7px;
-  }
-
-  .form {
-    gap: 6px;
-  }
-
-  .form button {
-    padding: 10px 11px;
+    padding: 6px;
   }
 
   .stage {
-    height: 67vh;
-    min-height: 210px;
+    height: 70vh;
+    min-height: 230px;
   }
 
-  .help {
-    font-size: 11px;
+  h1 {
+    font-size: 18px;
   }
 }
 </style>
@@ -227,256 +133,119 @@ body.is-fullscreen .help {
 <div class="app">
 
   <header>
-    <div>
-      <h1>Hattrick Sport</h1>
-      <div class="sub">Fullscreen e autorizzazioni iframe</div>
+    <h1>Hattrick Sport</h1>
+    <div class="description">
+      Focus del player e scorciatoia fullscreen
     </div>
   </header>
 
-  <form class="form" id="loadForm">
+  <form id="loadForm" class="controls">
     <input
-      id="streamUrl"
+      id="siteUrl"
       type="url"
-      autocomplete="url"
-      spellcheck="false"
-      aria-label="URL Hattrick Sport da incorporare"
       value="https://htsport.info/calcio.htm"
+      aria-label="Indirizzo del sito streaming"
       required
     >
-    <button type="submit">Carica</button>
+    <button type="submit">Carica sito</button>
+    <button type="button" id="focusButton">
+      DAI FOCUS AL PLAYER
+    </button>
   </form>
 
-  <main class="stage" id="stage">
-
-    <!-- Autorizzazioni fullscreen aggiornate -->
+  <main class="stage">
     <iframe
       id="siteFrame"
       title="Hattrick Sport"
       src="https://htsport.info/calcio.htm"
-      allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
+      tabindex="0"
+      allow="fullscreen *; autoplay *; picture-in-picture *"
       allowfullscreen="true"
       webkitallowfullscreen="true"
-      mozallowfullscreen="true"
       referrerpolicy="strict-origin-when-cross-origin">
     </iframe>
-
-    <div class="overlay" id="overlay">
-      <button
-        type="button"
-        class="fsbtn"
-        id="fullscreenButton">
-        ⛶ SCHERMO INTERO
-      </button>
-    </div>
-
-    <div class="sensor" id="sensor" aria-hidden="true"></div>
-
   </main>
 
-  <div class="status" id="status" role="status" aria-live="polite">
-    Hattrick Sport caricato.
+  <div id="status" role="status" aria-live="polite">
+    Pagina caricata. Premi “Dai focus al player” e poi prova F.
   </div>
 
-  <p class="help">
-    Il pulsante attiva il fullscreen del contenitore Hattrick.
-    Il pulsante di uscita scompare dopo 3 secondi e ricompare
-    interagendo con l'angolo superiore destro.
-  </p>
+  <div class="note">
+    Il pulsante tenta di trasferire il focus all'iframe Hattrick.
+    Non forza il fullscreen del contenitore esterno.
+  </div>
 
 </div>
 
 <script>
 (() => {
-  'use strict';
+  const frame = document.getElementById("siteFrame");
+  const focusButton = document.getElementById("focusButton");
+  const status = document.getElementById("status");
+  const form = document.getElementById("loadForm");
+  const urlInput = document.getElementById("siteUrl");
 
-  const form = document.getElementById('loadForm');
-  const urlInput = document.getElementById('streamUrl');
-  const frame = document.getElementById('siteFrame');
-  const stage = document.getElementById('stage');
-  const button = document.getElementById('fullscreenButton');
-  const sensor = document.getElementById('sensor');
-  const overlay = document.getElementById('overlay');
-  const status = document.getElementById('status');
+  function focusPlayer() {
+    // Rende l'iframe raggiungibile tramite la tastiera.
+    frame.setAttribute("tabindex", "0");
 
-  let hideTimer;
-  let inFullscreen = false;
-
-  function setButtonVisible(visible) {
-    button.classList.toggle('hidden', !visible);
-  }
-
-  function resetHideTimer() {
-    setButtonVisible(true);
-    clearTimeout(hideTimer);
-
-    if (inFullscreen) {
-      hideTimer = setTimeout(() => {
-        setButtonVisible(false);
-      }, 3000);
-    }
-  }
-
-  function placeControls(geometry) {
-    overlay.style.top =
-      Math.max(6, geometry.top + 8) + 'px';
-
-    overlay.style.right =
-      Math.max(6, geometry.left + 8) + 'px';
-
-    sensor.style.top =
-      Math.max(0, geometry.top) + 'px';
-
-    sensor.style.right =
-      Math.max(0, geometry.left) + 'px';
-  }
-
-  function showNormalButton() {
-    clearTimeout(hideTimer);
-    setButtonVisible(true);
-
-    button.textContent = '⛶ SCHERMO INTERO';
-
-    document.body.classList.remove('is-fullscreen');
-
-    frame.style.cssText = '';
-
-    overlay.style.top = '10px';
-    overlay.style.right = '10px';
-
-    sensor.style.top = '0px';
-    sensor.style.right = '0px';
-  }
-
-  function showFullscreenButton() {
-    button.textContent = '✕ ESCI FULLSCREEN';
-
-    document.body.classList.add('is-fullscreen');
-
-    resetHideTimer();
-  }
-
-  async function enterFullscreen() {
+    // Prova a focalizzare il browsing context incorporato.
     try {
-      if (stage.requestFullscreen) {
-        await stage.requestFullscreen();
-      } else if (stage.webkitRequestFullscreen) {
-        stage.webkitRequestFullscreen();
-      } else {
-        throw new Error(
-          'Fullscreen non supportato da questo browser'
-        );
-      }
-    } catch (err) {
-      status.textContent =
-        'Fullscreen non riuscito: ' +
-        (err.name || 'Errore') +
-        (err.message ? ' — ' + err.message : '');
+      frame.focus({ preventScroll: true });
+    } catch (_) {
+      frame.focus();
     }
-  }
 
-  async function exitFullscreen() {
     try {
-      if (
-        document.fullscreenElement &&
-        document.exitFullscreen
-      ) {
-        await document.exitFullscreen();
-      } else if (
-        document.webkitFullscreenElement &&
-        document.webkitExitFullscreen
-      ) {
-        document.webkitExitFullscreen();
-      } else {
-        status.textContent =
-          'Il contenitore non risulta in fullscreen.';
-      }
-    } catch (err) {
-      status.textContent =
-        'Uscita fullscreen non riuscita: ' +
-        (err.message || err.name);
+      frame.contentWindow.focus();
+    } catch (error) {
+      console.warn("Focus del frame:", error);
     }
+
+    // Controlla il focus dal documento esterno.
+    setTimeout(() => {
+      const focused = document.activeElement === frame;
+
+      status.textContent = focused
+        ? "Focus assegnato all'iframe Hattrick. Ora premi F sulla tastiera."
+        : "Richiesta di focus inviata. Prova a premere F; se non funziona, clicca direttamente sul video.";
+
+      console.log({
+        iframeFocused: focused,
+        activeElement: document.activeElement?.tagName,
+        frameUrl: frame.src
+      });
+    }, 100);
   }
 
-  button.addEventListener('click', async event => {
-    event.preventDefault();
-    event.stopPropagation();
+  focusButton.addEventListener("click", focusPlayer);
 
-    if (
-      document.fullscreenElement === stage ||
-      document.webkitFullscreenElement === stage
-    ) {
-      await exitFullscreen();
-    } else {
-      await enterFullscreen();
-    }
+  // Clic diretto nell'area esterna dell'iframe: richiede il focus.
+  frame.addEventListener("focus", () => {
+    status.textContent =
+      "L'iframe Hattrick ha ricevuto il focus. Prova F.";
   });
 
-  function handleFullscreenChange() {
-    inFullscreen =
-      document.fullscreenElement === stage ||
-      document.webkitFullscreenElement === stage;
-
-    if (inFullscreen) {
-      showFullscreenButton();
-
-      status.textContent =
-        'Fullscreen attivo. Hattrick Sport rimane incorporato.';
-    } else {
-      showNormalButton();
-
-      status.textContent = 'Fullscreen terminato.';
-    }
-  }
-
-  document.addEventListener(
-    'fullscreenchange',
-    handleFullscreenChange
-  );
-
-  document.addEventListener(
-    'webkitfullscreenchange',
-    handleFullscreenChange
-  );
-
-  sensor.addEventListener('pointerenter', resetHideTimer);
-  sensor.addEventListener('pointermove', resetHideTimer);
-  sensor.addEventListener('pointerdown', resetHideTimer);
-
-  button.addEventListener('pointermove', resetHideTimer);
-  button.addEventListener('pointerenter', resetHideTimer);
-
-  window.addEventListener('resize', () => {
-    if (inFullscreen) {
-      resetHideTimer();
-    }
+  frame.addEventListener("load", () => {
+    status.textContent =
+      "Hattrick Sport è stato caricato. Premi il pulsante Focus e prova F.";
   });
 
-  window.addEventListener('orientationchange', () => {
-    if (inFullscreen) {
-      setTimeout(resetHideTimer, 180);
-    }
-  });
-
-  form.addEventListener('submit', event => {
+  form.addEventListener("submit", event => {
     event.preventDefault();
 
-    let url;
-
     try {
-      url = new URL(urlInput.value.trim());
-    } catch {
-      status.textContent = 'URL non valido.';
-      return;
-    }
+      const url = new URL(urlInput.value.trim());
 
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      status.textContent =
-        'Sono ammessi soltanto URL HTTP o HTTPS.';
-      return;
-    }
+      if (!["http:", "https:"].includes(url.protocol)) {
+        throw new Error("Sono consentiti soltanto indirizzi HTTP o HTTPS.");
+      }
 
-    frame.src = url.href;
-    status.textContent = 'Caricamento: ' + url.href;
+      frame.src = url.href;
+      status.textContent = "Caricamento di " + url.href;
+    } catch (error) {
+      status.textContent = "Indirizzo non valido: " + error.message;
+    }
   });
 })();
 </script>
