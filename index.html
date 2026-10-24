@@ -1,68 +1,263 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#080b12">
-<title>Stream Frame — Fullscreen test</title>
+<meta name="theme-color" content="#05070b">
+<title>Hattrick Sport — Video Fullscreen</title>
+
 <style>
-  :root { color-scheme: dark; --bg:#080b12; --panel:#111827; --edge:#293548; --text:#eef3fb; --muted:#aab5c5; --accent:#e8edf5; }
-  * { box-sizing:border-box; }
-  html, body { margin:0; min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
-  body { padding:16px; }
-  .app { max-width:1440px; margin:0 auto; }
-  header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
-  h1 { font-size:clamp(18px,2.5vw,25px); margin:0; font-weight:700; letter-spacing:.01em; }
-  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
-  .form { display:flex; gap:8px; margin-bottom:12px; }
-  input { flex:1; min-width:0; border:1px solid var(--edge); border-radius:10px; padding:12px 13px; background:#0e1420; color:var(--text); font-size:14px; }
-  button { border:1px solid #46536a; border-radius:10px; padding:11px 15px; background:#e8edf5; color:#101622; font-size:14px; font-weight:750; cursor:pointer; white-space:nowrap; }
-  button:focus-visible, input:focus-visible { outline:2px solid #91b9ff; outline-offset:2px; }
-  .stage { position:relative; width:100%; height:min(72vh, 820px); min-height:260px; overflow:hidden; background:#000; border:1px solid var(--edge); border-radius:12px; }
-  .stage iframe { display:block; width:100%; height:100%; border:0; background:#000; }
-  .overlay { position:absolute; z-index:20; top:12px; right:12px; }
-  .overlay button { background:rgba(10,14,22,.94); color:white; border:1px solid rgba(255,255,255,.85); box-shadow:0 6px 25px rgba(0,0,0,.4); border-radius:8px; padding:12px 15px; }
-  .overlay .fsbtn { opacity:1; pointer-events:auto; transition:opacity .22s ease; }
-  .overlay .fsbtn.hidden { opacity:0; pointer-events:none; }
-  .sensor { position:absolute; z-index:19; top:0; right:0; width:190px; height:94px; background:transparent; touch-action:manipulation; }
-  .help { margin:12px 2px 0; color:var(--muted); font-size:13px; line-height:1.5; }
-  .status { color:#d4deec; font-size:12px; min-height:18px; margin-top:8px; }
-  .stage:fullscreen { width:100vw; height:100vh; min-height:0; border:0; border-radius:0; background:#000; }
-  .stage:fullscreen iframe { width:100%; height:100%; }
-  .stage:-webkit-full-screen { width:100vw; height:100vh; min-height:0; border:0; border-radius:0; background:#000; }
-  .stage:-webkit-full-screen iframe { width:100%; height:100%; }
-  @media (max-width:700px) {
-    body { padding:9px; }
-    header { margin-bottom:10px; }
-    .form { gap:6px; }
-    .form button { padding:10px 12px; }
-    .stage { height:65vh; min-height:220px; }
-    .help { font-size:12px; }
+:root {
+  color-scheme: dark;
+  --bg: #080b12;
+  --edge: #293548;
+  --text: #eef3fb;
+  --muted: #aab5c5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, Arial, sans-serif;
+}
+
+body {
+  padding: 12px;
+}
+
+.app {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+h1 {
+  font-size: clamp(17px, 2.4vw, 23px);
+  margin: 0;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--edge);
+  border-radius: 9px;
+  padding: 11px;
+  background: #0e1420;
+  color: var(--text);
+}
+
+button {
+  border: 1px solid #46536a;
+  border-radius: 9px;
+  padding: 10px 13px;
+  background: #e8edf5;
+  color: #101622;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: min(76vh, 850px);
+  min-height: 250px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  isolation: isolate;
+}
+
+.stage iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+}
+
+.overlay {
+  position: absolute;
+  z-index: 2147483647;
+  top: 10px;
+  right: 10px;
+}
+
+.overlay button {
+  background: rgba(10,14,22,.94);
+  color: #fff;
+  border: 1px solid #fff;
+  box-shadow: 0 6px 25px rgba(0,0,0,.4);
+}
+
+.fsbtn {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity .22s ease;
+}
+
+.fsbtn.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sensor {
+  position: absolute;
+  z-index: 2147483646;
+  top: 0;
+  right: 0;
+  width: 170px;
+  height: 76px;
+  background: transparent;
+  touch-action: manipulation;
+}
+
+.help {
+  margin: 10px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.status {
+  color: #d4deec;
+  font-size: 12px;
+  min-height: 16px;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+
+.stage:fullscreen,
+.stage:-webkit-full-screen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+body.is-fullscreen {
+  padding: 0;
+  overflow: hidden;
+}
+
+body.is-fullscreen .app {
+  max-width: none;
+  margin: 0;
+}
+
+body.is-fullscreen header,
+body.is-fullscreen .form,
+body.is-fullscreen .status,
+body.is-fullscreen .help {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  body {
+    padding: 7px;
   }
+
+  .stage {
+    height: 67vh;
+    min-height: 210px;
+  }
+
+  .help {
+    font-size: 11px;
+  }
+}
 </style>
 </head>
+
 <body>
 <div class="app">
+
   <header>
     <div>
-      <h1>Stream Frame</h1>
-      <div class="sub">Prototipo fullscreen per Hattrick Sport</div>
+      <h1>Hattrick Sport</h1>
+      <div class="sub">Fullscreen con viewport 16:9</div>
     </div>
   </header>
+
   <form class="form" id="loadForm">
-    <input id="streamUrl" type="url" autocomplete="url" spellcheck="false" aria-label="URL del sito da incorporare" value="https://htsport.info/calcio.htm" required>
+    <input
+      id="streamUrl"
+      type="url"
+      autocomplete="url"
+      spellcheck="false"
+      aria-label="URL Hattrick Sport"
+      value="https://htsport.info/calcio.htm"
+      required
+    >
     <button type="submit">Carica</button>
   </form>
+
   <main class="stage" id="stage">
-    <iframe id="siteFrame" title="Sito di streaming incorporato" src="https://htsport.info/calcio.htm" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+
+    <iframe
+      id="siteFrame"
+      title="Hattrick Sport"
+      src="https://htsport.info/calcio.htm"
+      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+
     <div class="overlay" id="overlay">
-      <button type="button" class="fsbtn" id="fullscreenButton">⛶ SCHERMO INTERO</button>
+      <button type="button" class="fsbtn" id="fullscreenButton">
+        ⛶ SCHERMO INTERO
+      </button>
     </div>
+
     <div class="sensor" id="sensor" aria-hidden="true"></div>
+
   </main>
-  <div class="status" id="status" role="status" aria-live="polite">Pagina caricata nell'iframe. Se il sito impedisce l'incorporamento, qui non verrà mostrato il player.</div>
-  <p class="help">Il tasto Schermo intero espande il contenitore dell'iframe e mantiene un pulsante di uscita sovrapposto. Il pulsante scompare dopo 3 secondi; passa il puntatore o tocca l'angolo in alto a destra per farlo riapparire. Su touchscreen, potrebbe essere necessario un primo tocco per mostrare il pulsante e un secondo per uscire.</p>
+
+  <div class="status" id="status" role="status" aria-live="polite">
+    Hattrick Sport caricato.
+  </div>
+
+  <p class="help">
+    In fullscreen il contenitore viene adattato al rapporto 16:9.
+    Il pulsante di uscita scompare dopo 3 secondi e ricompare
+    interagendo con l'angolo superiore destro.
+  </p>
+
 </div>
+
 <script>
 (() => {
   const form = document.getElementById('loadForm');
@@ -72,78 +267,196 @@
   const button = document.getElementById('fullscreenButton');
   const sensor = document.getElementById('sensor');
   const status = document.getElementById('status');
+
   let hideTimer;
   let inFullscreen = false;
 
   function setButtonVisible(visible) {
     button.classList.toggle('hidden', !visible);
   }
+
   function resetHideTimer() {
     setButtonVisible(true);
     clearTimeout(hideTimer);
-    if (inFullscreen) hideTimer = setTimeout(() => setButtonVisible(false), 3000);
+
+    if (inFullscreen) {
+      hideTimer = setTimeout(() => {
+        setButtonVisible(false);
+      }, 3000);
+    }
   }
+
   function showNormalButton() {
     clearTimeout(hideTimer);
     setButtonVisible(true);
+
     button.textContent = '⛶ SCHERMO INTERO';
+    document.body.classList.remove('is-fullscreen');
+
+    frame.style.cssText = '';
+
+    sensor.style.top = '0px';
+    sensor.style.right = '0px';
   }
+
   function showFullscreenButton() {
     button.textContent = '✕ ESCI FULLSCREEN';
+
+    document.body.classList.add('is-fullscreen');
+
+    layoutVideoViewport();
     resetHideTimer();
   }
+
+  function layoutVideoViewport() {
+    if (!inFullscreen) return;
+
+    const vw = Math.max(
+      1,
+      stage.clientWidth || window.innerWidth
+    );
+
+    const vh = Math.max(
+      1,
+      stage.clientHeight || window.innerHeight
+    );
+
+    const ratio = 16 / 9;
+
+    const width = Math.min(vw, vh * ratio);
+    const height = width / ratio;
+
+    const left = (vw - width) / 2;
+    const top = (vh - height) / 2;
+
+    Object.assign(frame.style, {
+      position: 'absolute',
+      inset: 'auto',
+      left: left + 'px',
+      top: top + 'px',
+      width: width + 'px',
+      height: height + 'px',
+      border: '0',
+      transform: 'none',
+      display: 'block',
+      background: '#000'
+    });
+
+    button.style.top = Math.max(6, top + 8) + 'px';
+    button.style.right = Math.max(6, left + 8) + 'px';
+
+    sensor.style.top = Math.max(0, top) + 'px';
+    sensor.style.right = Math.max(0, left) + 'px';
+  }
+
   async function enterFullscreen() {
     try {
-      if (stage.requestFullscreen) await stage.requestFullscreen();
-      else if (stage.webkitRequestFullscreen) stage.webkitRequestFullscreen();
-      else throw new Error('Fullscreen non supportato da questo browser');
-      status.textContent = 'Contenitore in fullscreen.';
+      if (stage.requestFullscreen) {
+        await stage.requestFullscreen();
+      } else if (stage.webkitRequestFullscreen) {
+        stage.webkitRequestFullscreen();
+      } else {
+        throw new Error('Fullscreen non supportato');
+      }
     } catch (err) {
-      status.textContent = 'Fullscreen non riuscito: ' + (err.name || 'Errore') + (err.message ? ' — ' + err.message : '');
+      status.textContent =
+        'Fullscreen non riuscito: ' +
+        (err.name || 'Errore') +
+        (err.message ? ' — ' + err.message : '');
     }
   }
+
   async function exitFullscreen() {
     try {
-      if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
-      else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
-      else status.textContent = 'Il contenitore non risulta in fullscreen.';
+      if (document.fullscreenElement &&
+          document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (document.webkitFullscreenElement &&
+                 document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
     } catch (err) {
-      status.textContent = 'Uscita fullscreen non riuscita: ' + (err.message || err.name);
+      status.textContent =
+        'Uscita fullscreen non riuscita: ' +
+        (err.message || err.name);
     }
   }
-  button.addEventListener('click', async (event) => {
+
+  button.addEventListener('click', async event => {
     event.preventDefault();
     event.stopPropagation();
-    if (document.fullscreenElement === stage || document.webkitFullscreenElement === stage) {
+
+    if (
+      document.fullscreenElement === stage ||
+      document.webkitFullscreenElement === stage
+    ) {
       await exitFullscreen();
     } else {
       await enterFullscreen();
     }
   });
-  document.addEventListener('fullscreenchange', () => {
-    inFullscreen = document.fullscreenElement === stage;
-    if (inFullscreen) showFullscreenButton();
-    else showNormalButton();
-  });
-  document.addEventListener('webkitfullscreenchange', () => {
-    inFullscreen = document.webkitFullscreenElement === stage;
-    if (inFullscreen) showFullscreenButton();
-    else showNormalButton();
-  });
+
+  function handleFullscreenChange() {
+    inFullscreen =
+      document.fullscreenElement === stage ||
+      document.webkitFullscreenElement === stage;
+
+    if (inFullscreen) {
+      showFullscreenButton();
+      status.textContent = 'Fullscreen attivo.';
+    } else {
+      showNormalButton();
+      status.textContent = 'Fullscreen terminato.';
+    }
+  }
+
+  document.addEventListener(
+    'fullscreenchange',
+    handleFullscreenChange
+  );
+
+  document.addEventListener(
+    'webkitfullscreenchange',
+    handleFullscreenChange
+  );
+
   sensor.addEventListener('pointerenter', resetHideTimer);
   sensor.addEventListener('pointermove', resetHideTimer);
   sensor.addEventListener('pointerdown', resetHideTimer);
+
   button.addEventListener('pointermove', resetHideTimer);
   button.addEventListener('pointerenter', resetHideTimer);
-  form.addEventListener('submit', (event) => {
+
+  window.addEventListener('resize', () => {
+    if (inFullscreen) {
+      requestAnimationFrame(layoutVideoViewport);
+    }
+  });
+
+  window.addEventListener('orientationchange', () => {
+    if (inFullscreen) {
+      setTimeout(layoutVideoViewport, 180);
+    }
+  });
+
+  form.addEventListener('submit', event => {
     event.preventDefault();
+
     let url;
-    try { url = new URL(urlInput.value.trim()); }
-    catch { status.textContent = 'URL non valido.'; return; }
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      status.textContent = 'Sono ammessi soltanto URL HTTP o HTTPS.';
+
+    try {
+      url = new URL(urlInput.value.trim());
+    } catch {
+      status.textContent = 'URL non valido.';
       return;
     }
+
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      status.textContent =
+        'Sono ammessi soltanto URL HTTP o HTTPS.';
+      return;
+    }
+
     frame.src = url.href;
     status.textContent = 'Caricamento: ' + url.href;
   });
