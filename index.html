@@ -309,45 +309,39 @@ body.is-fullscreen .help {
   }
 
   function layoutVideoViewport() {
-    if (!inFullscreen) return;
+  if (!inFullscreen) return;
 
-    const vw = Math.max(
-      1,
-      stage.clientWidth || window.innerWidth
-    );
+  const vw = stage.clientWidth || window.innerWidth;
+  const vh = stage.clientHeight || window.innerHeight;
 
-    const vh = Math.max(
-      1,
-      stage.clientHeight || window.innerHeight
-    );
+  // Viewport di riferimento del player.
+  const baseW = 1280;
+  const baseH = 720;
 
-    const ratio = 16 / 9;
+  // Adatta il video allo schermo senza deformarne le proporzioni.
+  const scale = Math.min(vw / baseW, vh / baseH);
 
-    const width = Math.min(vw, vh * ratio);
-    const height = width / ratio;
+  Object.assign(frame.style, {
+    position: "absolute",
+    inset: "auto",
+    left: "50%",
+    top: "50%",
+    width: baseW + "px",
+    height: baseH + "px",
+    maxWidth: "none",
+    border: "0",
+    display: "block",
+    background: "#000",
+    transformOrigin: "center center",
+    transform: `translate(-50%, -50%) scale(${scale})`
+  });
 
-    const left = (vw - width) / 2;
-    const top = (vh - height) / 2;
+  button.style.top = "10px";
+  button.style.right = "10px";
 
-    Object.assign(frame.style, {
-      position: 'absolute',
-      inset: 'auto',
-      left: left + 'px',
-      top: top + 'px',
-      width: width + 'px',
-      height: height + 'px',
-      border: '0',
-      transform: 'none',
-      display: 'block',
-      background: '#000'
-    });
-
-    button.style.top = Math.max(6, top + 8) + 'px';
-    button.style.right = Math.max(6, left + 8) + 'px';
-
-    sensor.style.top = Math.max(0, top) + 'px';
-    sensor.style.right = Math.max(0, left) + 'px';
-  }
+  sensor.style.top = "0";
+  sensor.style.right = "0";
+}
 
   async function enterFullscreen() {
     try {
