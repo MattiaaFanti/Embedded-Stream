@@ -60,6 +60,11 @@
       transform: translate(-50%, -50%) scale(.97);
     }
 
+    #focusButton:disabled {
+      opacity: .7;
+      cursor: wait;
+    }
+
     #status {
       position: absolute;
       left: 12px;
@@ -73,10 +78,6 @@
       font-size: 12px;
       line-height: 1.4;
       pointer-events: none;
-    }
-
-    #status.hidden {
-      display: none;
     }
   </style>
 </head>
@@ -128,13 +129,11 @@
         const visited = new Set();
 
         function visit(win, path) {
-          if (!win || visited.has(win)) {
-            return;
-          }
+          if (!win || visited.has(win)) return;
 
           visited.add(win);
 
-          let count = 0;
+          let count;
 
           try {
             count = win.length;
@@ -171,39 +170,120 @@
         try {
           visit(frame.contentWindow, ["siteFrame"]);
         } catch (error) {
-          console.warn("Impossibile accedere al frame Hattrick:", error);
+          console.warn(
+            "Impossibile accedere al frame Hattrick:",
+            error
+          );
         }
 
         return collected;
       }
 
+      function createFEvent(win, type) {
+        const options = {
+          key: "f",
+          code: "KeyF",
+          keyCode: 70,
+          which: 70,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        };
+
+        try {
+          return new win.KeyboardEvent(type, options);
+        } catch (_) {
+          return new KeyboardEvent(type, options);
+        }
+      }
+
+      function dispatchF(context, type) {
+        const win = context.win;
+
+        // Tentativo nel documento del contesto, se accessibile.
+        try {
+          const doc = win.document;
+          const target =
+            doc.activeElement &&
+            doc.activeElement !== doc.body
+              ? doc.activeElement
+              : doc;
+
+          const event = createFEvent(win, type);
+          target.dispatchEvent(event);
+
+          return {
+            percorso: context.path.join(" → "),
+            destinazione: target === doc ? "document" : "activeElement",
+            esito: "evento sintetico inviato"
+          };
+        } catch (error) {
+          // Nei frame cross-origin il DOM non è accessibile.
+          // Tentiamo almeno di inviare l'evento alla Window.
+          try {
+            win.dispatchEvent(
+              createFEvent(window, type)
+            );
+
+            return {
+              percorso: context.path.join(" → "),
+              destinazione: "window",
+              esito: "tentativo limitato dal cross-origin"
+            };
+          } catch (innerError) {
+            return {
+              percorso: context.path.join(" → "),
+              destinazione: "nessuna",
+              esito: innerError.message
+            };
+          }
+        }
+      }
+
+      async function simulateF(contexts) {
+        // Prima keydown: contesti più profondi per primi.
+        const results = [];
+
+        for (const context of contexts) {
+          results.push(dispatchF(context, "keydown"));
+        }
+
+        await sleep(80);
+
+        // Poi keyup nello stesso ordine.
+        for (const context of contexts) {
+          results.push(dispatchF(context, "keyup"));
+        }
+
+        console.log("Risultati tentativo F:");
+        console.table(results);
+
+        return results;
+      }
+
       async function focusPlayer() {
         button.disabled = true;
         button.textContent = "RICERCA PLAYER…";
-        status.classList.remove("hidden");
         status.textContent = "Richiesta del focus in corso…";
 
-        // Primo tentativo sul frame Hattrick.
         try {
           frame.focus({ preventScroll: true });
-        } catch (error) {
+        } catch (_) {
           frame.focus();
         }
 
         requestWindowFocus(frame.contentWindow);
 
-        // Attende il caricamento di eventuali frame interni.
         await sleep(300);
 
         let contexts = collectFrames();
 
-        // Prova nuovamente dopo un'attesa più lunga.
         if (contexts.length <= 1) {
           await sleep(700);
           contexts = collectFrames();
         }
 
-        // Dal contesto più esterno a quello più profondo.
+        // Focus: contesti più esterni prima di quelli interni.
         contexts.sort((a, b) => a.path.length - b.path.length);
 
         let successfulAttempts = 0;
@@ -216,10 +296,9 @@
           await sleep(100);
         }
 
-        // Ultimo tentativo sul contesto più profondo raggiungibile.
+        // Ultimo tentativo sul contesto più profondo.
         if (contexts.length > 0) {
           const deepest = contexts[contexts.length - 1];
-
           requestWindowFocus(deepest.win);
 
           console.log(
@@ -245,16 +324,26 @@
           iframeAttivo: document.activeElement === frame
         });
 
-        if (contexts.length <= 1) {
-          status.textContent =
-            "Focus richiesto. Il browser non ha esposto altri frame navigabili.";
-        } else {
-          status.textContent =
-            "Tentativi completati su " + contexts.length +
-            " contesti. Ora prova a premere F.";
-        }
+        // Nuova fase: tentativo di pressione sintetica di F.
+        status.textContent =
+          "Focus richiesto. Tentativo di inviare il tasto F…";
 
-        button.textContent = "FOCUS RICHIESTO";
+        const deepestFirst = [...contexts].sort(
+          (a, b) => b.path.length - a.path.length
+        );
+
+        const results = await simulateF(deepestFirst);
+
+        const sent = results.filter(
+          item => item.esito === "evento sintetico inviato"
+        ).length;
+
+        status.textContent =
+          "Procedura terminata. Contesti: " + contexts.length +
+          ". Eventi F inviati: " + sent +
+          ". Se il fullscreen non parte, il browser richiede una pressione reale.";
+
+        button.textContent = "RIPROVA FOCUS + F";
         button.disabled = false;
       }
 
@@ -262,7 +351,7 @@
 
       frame.addEventListener("load", () => {
         status.textContent =
-          "Hattrick caricato. Premi FOCUS PLAYER per tentare il focus interno.";
+          "Hattrick caricato. Premi FOCUS PLAYER per tentare focus e F.";
       });
     })();
   </script>
