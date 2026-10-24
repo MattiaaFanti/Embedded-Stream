@@ -1,101 +1,49 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover"
-    >
-    <meta name="theme-color" content="#000000">
-    <title>Hattrick Sport</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Hattrick Sport — Embedded Stream</title>
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #000;
-        }
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
 
-        #siteFrame {
-            display: block;
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            border: 0;
-            background: #000;
-        }
-    </style>
+    #siteFrame {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: #000;
+    }
+  </style>
 </head>
 
 <body>
-    <iframe
-        id="siteFrame"
-        src="https://htsport.info/calcio.htm"
-        title="Hattrick Sport"
-        tabindex="0"
-        allow="fullscreen *; autoplay *; picture-in-picture *"
-        allowfullscreen
-        webkitallowfullscreen>
-    </iframe>
-
-    <script>
-        "use strict";
-
-        const frame = document.getElementById("siteFrame");
-
-        function focusHattrick() {
-            if (!frame) {
-                return;
-            }
-
-            try {
-                frame.focus({
-                    preventScroll: true
-                });
-            } catch (error) {
-                frame.focus();
-            }
-
-            try {
-                frame.contentWindow.focus();
-            } catch (error) {
-                console.debug(
-                    "Focus del contenuto incorporato:",
-                    error.message
-                );
-            }
-        }
-
-        // Primo tentativo dopo il caricamento completo della pagina.
-        window.addEventListener("load", () => {
-            focusHattrick();
-        });
-
-        // Ripete il tentativo quando Hattrick termina il caricamento.
-        frame.addEventListener("load", () => {
-            focusHattrick();
-        });
-
-        // Ritenta dopo il caricamento iniziale, per gestire
-        // eventuali ritardi nella creazione dei controlli.
-        document.addEventListener("DOMContentLoaded", () => {
-            focusHattrick();
-
-            setTimeout(focusHattrick, 500);
-            setTimeout(focusHattrick, 1500);
-            setTimeout(focusHattrick, 3000);
-        });
-    </script>
+  <iframe
+    id="siteFrame"
+    src="https://htsport.info/calcio.htm"
+    title="Hattrick Sport"
+    allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
+    allowfullscreen
+    webkitallowfullscreen
+    referrerpolicy="strict-origin-when-cross-origin">
+  </iframe>
 </body>
 </html>
