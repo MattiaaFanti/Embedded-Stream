@@ -2,10 +2,9 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <title>Embedded Stream</title>
+  <title>Hattrick Sport — Player Focus</title>
 
   <style>
     * {
@@ -13,10 +12,10 @@
     }
 
     html, body {
-      width: 100%;
-      height: 100%;
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background: #000;
       font-family: Arial, sans-serif;
@@ -30,6 +29,8 @@
     }
 
     #siteFrame {
+      position: absolute;
+      inset: 0;
       display: block;
       width: 100%;
       height: 100%;
@@ -37,82 +38,43 @@
       background: #000;
     }
 
-    #playOverlay {
+    #focusButton {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 999999;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 15px 10px 10px;
-      border: 1px solid rgba(255,255,255,.8);
-      border-radius: 40px;
-      background: rgba(12, 15, 22, .94);
-      color: white;
-      box-shadow: 0 4px 18px rgba(0,0,0,.65);
-      cursor: pointer;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    #playIcon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 48px;
-      height: 48px;
-      flex: 0 0 48px;
-      padding-left: 4px;
-      border-radius: 50%;
-      background: #e53935;
+      top: 12px;
+      left: 12px;
+      z-index: 2147483647;
+      padding: 13px 17px;
+      border: 2px solid #fff;
+      border-radius: 8px;
+      background: rgba(15, 20, 30, .96);
       color: #fff;
-      font-size: 23px;
-    }
-
-    #playText {
       font-size: 14px;
       font-weight: 700;
-      letter-spacing: .3px;
+      cursor: pointer;
+      box-shadow: 0 3px 18px rgba(0, 0, 0, .5);
     }
 
-    #playOverlay:active {
-      transform: scale(.98);
+    #focusButton:active {
+      background: #245bc7;
     }
 
     #status {
       position: absolute;
       left: 12px;
       bottom: 12px;
-      z-index: 999998;
+      z-index: 2147483646;
       max-width: calc(100% - 24px);
-      padding: 7px 10px;
+      padding: 8px 11px;
       border-radius: 6px;
-      background: rgba(0,0,0,.75);
+      background: rgba(0, 0, 0, .8);
       color: #fff;
       font-size: 12px;
+      line-height: 1.4;
       pointer-events: none;
     }
 
     #status.hidden {
       display: none;
-    }
-
-    @media (max-width: 600px) {
-      #playOverlay {
-        top: 12px;
-        left: 12px;
-      }
-
-      #playIcon {
-        width: 42px;
-        height: 42px;
-        flex-basis: 42px;
-      }
-
-      #playText {
-        font-size: 12px;
-      }
     }
   </style>
 </head>
@@ -120,26 +82,23 @@
 <body>
   <main id="stage">
 
-    <!-- Hattrick viene caricato immediatamente, dietro al pulsante. -->
-    <!-- Il sandbox non concede popup o nuove schede. -->
     <iframe
       id="siteFrame"
       src="https://htsport.info/calcio.htm"
       title="Hattrick Sport"
       tabindex="0"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
-      allowfullscreen
-      referrerpolicy="strict-origin-when-cross-origin">
+      allowfullscreen>
     </iframe>
 
-    <!-- Pulsante di primo accesso, sovrapposto in alto a sinistra. -->
-    <button id="playOverlay" type="button">
-      <span id="playIcon" aria-hidden="true">▶</span>
-      <span id="playText">AVVIA PLAYER</span>
+    <button id="focusButton" type="button">
+      FOCUS PLAYER
     </button>
 
-    <div id="status">Caricamento del player in corso…</div>
+    <div id="status" role="status" aria-live="polite">
+      Hattrick Sport in caricamento.
+    </div>
+
   </main>
 
   <script>
@@ -147,40 +106,161 @@
       "use strict";
 
       const frame = document.getElementById("siteFrame");
-      const overlay = document.getElementById("playOverlay");
+      const button = document.getElementById("focusButton");
       const status = document.getElementById("status");
 
-      let loaded = false;
+      const sleep = ms =>
+        new Promise(resolve => setTimeout(resolve, ms));
 
-      frame.addEventListener("load", () => {
-        loaded = true;
-        status.textContent = "Player caricato. Premi AVVIA PLAYER.";
-      });
-
-      overlay.addEventListener("click", event => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        // Nasconde il nostro pulsante: il clic non viene
-        // inoltrato al documento incorporato.
-        overlay.remove();
-
-        // Richiede il focus dell'iframe Hattrick.
+      function requestWindowFocus(win) {
         try {
-          frame.focus({ preventScroll: true });
-        } catch (_) {
-          frame.focus();
+          win.focus();
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function collectFrames() {
+        const collected = [];
+        const visited = new Set();
+
+        function visit(win, path) {
+          if (!win || visited.has(win)) {
+            return;
+          }
+
+          visited.add(win);
+
+          let count = 0;
+
+          try {
+            count = win.length;
+          } catch (error) {
+            collected.push({
+              win,
+              path,
+              children: null,
+              readable: false
+            });
+            return;
+          }
+
+          collected.push({
+            win,
+            path,
+            children: count,
+            readable: true
+          });
+
+          for (let i = 0; i < count; i++) {
+            try {
+              visit(win.frames[i], path.concat(i));
+            } catch (error) {
+              console.warn(
+                "Frame non raggiungibile:",
+                path.concat(i),
+                error
+              );
+            }
+          }
         }
 
         try {
-          frame.contentWindow.focus();
-        } catch (_) {}
+          visit(frame.contentWindow, ["siteFrame"]);
+        } catch (error) {
+          console.warn("Impossibile accedere al frame Hattrick:", error);
+        }
 
-        status.textContent = loaded
-          ? "Player pronto. Ora interagisci direttamente con il video."
-          : "Focus richiesto. Il player sta ancora caricando.";
+        return collected;
+      }
 
-        console.log("Overlay rimosso; focus richiesto all'iframe.");
+      async function focusPlayer() {
+        button.disabled = true;
+        button.textContent = "RICERCA PLAYER…";
+        status.classList.remove("hidden");
+        status.textContent = "Richiesta del focus in corso…";
+
+        // Primo tentativo sul frame Hattrick.
+        try {
+          frame.focus({ preventScroll: true });
+        } catch (error) {
+          frame.focus();
+        }
+
+        requestWindowFocus(frame.contentWindow);
+
+        // Attende il caricamento di eventuali frame interni.
+        await sleep(300);
+
+        let contexts = collectFrames();
+
+        // Prova nuovamente dopo un'attesa più lunga.
+        if (contexts.length <= 1) {
+          await sleep(700);
+          contexts = collectFrames();
+        }
+
+        // Dal contesto più esterno a quello più profondo.
+        contexts.sort((a, b) => a.path.length - b.path.length);
+
+        let successfulAttempts = 0;
+
+        for (const context of contexts) {
+          if (requestWindowFocus(context.win)) {
+            successfulAttempts++;
+          }
+
+          await sleep(100);
+        }
+
+        // Ultimo tentativo sul contesto più profondo raggiungibile.
+        if (contexts.length > 0) {
+          const deepest = contexts[contexts.length - 1];
+
+          requestWindowFocus(deepest.win);
+
+          console.log(
+            "Ultimo contesto focalizzato:",
+            deepest.path.join(" → ")
+          );
+        }
+
+        console.table(
+          contexts.map(context => ({
+            percorso: context.path.join(" → "),
+            profondità: context.path.length,
+            sottoframe: context.children,
+            contestoLeggibile: context.readable
+          }))
+        );
+
+        console.log({
+          contestiIndividuati: contexts.length,
+          tentativiFocusRiusciti: successfulAttempts,
+          pagina: location.href,
+          elementoAttivo: document.activeElement?.tagName,
+          iframeAttivo: document.activeElement === frame
+        });
+
+        if (contexts.length <= 1) {
+          status.textContent =
+            "Focus richiesto. Il browser non ha esposto altri frame navigabili.";
+        } else {
+          status.textContent =
+            "Tentativi completati su " + contexts.length +
+            " contesti. Ora prova a premere F.";
+        }
+
+        button.textContent = "FOCUS RICHIESTO";
+        button.disabled = false;
+      }
+
+      button.addEventListener("click", focusPlayer);
+
+      frame.addEventListener("load", () => {
+        status.textContent =
+          "Hattrick caricato. Premi FOCUS PLAYER per tentare il focus interno.";
       });
     })();
   </script>
