@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#080b12">
-<title>Hattrick Sport - Player Focus</title>
+<title>Hattrick Sport — Focus Player</title>
 
 <style>
 * {
@@ -25,7 +25,7 @@ body {
 
 .app {
   max-width: 1440px;
-  margin: auto;
+  margin: 0 auto;
 }
 
 header {
@@ -38,9 +38,9 @@ h1 {
 }
 
 .description {
-  margin-top: 4px;
   color: #aab5c5;
   font-size: 13px;
+  margin-top: 4px;
 }
 
 .controls {
@@ -76,24 +76,13 @@ button {
   border-color: #5488e8;
 }
 
-.stage {
-  position: relative;
+#siteFrame {
+  display: block;
   width: 100%;
   height: min(76vh, 850px);
   min-height: 260px;
-  overflow: hidden;
-  background: #000;
   border: 1px solid #293548;
   border-radius: 9px;
-}
-
-#siteFrame {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
   background: #000;
 }
 
@@ -105,11 +94,17 @@ button {
   overflow-wrap: anywhere;
 }
 
-.note {
-  margin-top: 8px;
-  color: #9ca9bb;
-  font-size: 12px;
-  line-height: 1.5;
+#log {
+  background: #101725;
+  border: 1px solid #293548;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.5 monospace;
 }
 
 @media (max-width: 600px) {
@@ -117,7 +112,7 @@ button {
     padding: 6px;
   }
 
-  .stage {
+  #siteFrame {
     height: 70vh;
     min-height: 230px;
   }
@@ -135,7 +130,7 @@ button {
   <header>
     <h1>Hattrick Sport</h1>
     <div class="description">
-      Focus del player e scorciatoia fullscreen
+      Test focus e navigazione da tastiera verso il player
     </div>
   </header>
 
@@ -149,47 +144,86 @@ button {
     >
     <button type="submit">Carica sito</button>
     <button type="button" id="focusButton">
-      DAI FOCUS AL PLAYER
+      FOCUS + 3 TAB
     </button>
   </form>
 
-  <main class="stage">
-    <iframe
-      id="siteFrame"
-      title="Hattrick Sport"
-      src="https://htsport.info/calcio.htm"
-      tabindex="0"
-      allow="fullscreen *; autoplay *; picture-in-picture *"
-      allowfullscreen="true"
-      webkitallowfullscreen="true"
-      referrerpolicy="strict-origin-when-cross-origin">
-    </iframe>
-  </main>
+  <iframe
+    id="siteFrame"
+    title="Hattrick Sport"
+    src="https://htsport.info/calcio.htm"
+    tabindex="0"
+    allow="fullscreen *; autoplay *; picture-in-picture *"
+    allowfullscreen
+    webkitallowfullscreen>
+  </iframe>
 
   <div id="status" role="status" aria-live="polite">
-    Pagina caricata. Premi “Dai focus al player” e poi prova F.
+    Carica il sito e premi FOCUS + 3 TAB.
   </div>
 
-  <div class="note">
-    Il pulsante tenta di trasferire il focus all'iframe Hattrick.
-    Non forza il fullscreen del contenitore esterno.
-  </div>
+  <pre id="log">Il registro delle prove apparirà qui.</pre>
 
 </div>
 
 <script>
 (() => {
+  "use strict";
+
   const frame = document.getElementById("siteFrame");
   const focusButton = document.getElementById("focusButton");
   const status = document.getElementById("status");
+  const log = document.getElementById("log");
   const form = document.getElementById("loadForm");
   const urlInput = document.getElementById("siteUrl");
 
-  function focusPlayer() {
-    // Rende l'iframe raggiungibile tramite la tastiera.
+  const sleep = ms =>
+    new Promise(resolve => setTimeout(resolve, ms));
+
+  function writeLog(message, data) {
+    const detail = data ? " " + JSON.stringify(data) : "";
+    log.textContent += "\n" + message + detail;
+    log.scrollTop = log.scrollHeight;
+    console.log(message, data || "");
+  }
+
+  function getFocusInfo() {
+    const active = document.activeElement;
+
+    return {
+      pagina: location.href,
+      elementoAttivo: active?.tagName || null,
+      id: active?.id || null,
+      eIframeHattrick: active === frame,
+      attivazioneUtente:
+        navigator.userActivation?.isActive ?? null
+    };
+  }
+
+  function dispatchTab(target, phase) {
+    if (!target || typeof target.dispatchEvent !== "function") {
+      return false;
+    }
+
+    const event = new KeyboardEvent(phase, {
+      key: "Tab",
+      code: "Tab",
+      keyCode: 9,
+      which: 9,
+      bubbles: true,
+      cancelable: true,
+      composed: true
+    });
+
+    return target.dispatchEvent(event);
+  }
+
+  async function focusAndThreeTabs() {
+    log.textContent = "";
+    status.textContent = "Assegnazione del focus in corso...";
+
     frame.setAttribute("tabindex", "0");
 
-    // Prova a focalizzare il browsing context incorporato.
     try {
       frame.focus({ preventScroll: true });
     } catch (_) {
@@ -199,37 +233,40 @@ button {
     try {
       frame.contentWindow.focus();
     } catch (error) {
-      console.warn("Focus del frame:", error);
+      writeLog("Focus del frame:", {
+        errore: error.message
+      });
     }
 
-    // Controlla il focus dal documento esterno.
-    setTimeout(() => {
-      const focused = document.activeElement === frame;
+    await sleep(150);
 
-      status.textContent = focused
-        ? "Focus assegnato all'iframe Hattrick. Ora premi F sulla tastiera."
-        : "Richiesta di focus inviata. Prova a premere F; se non funziona, clicca direttamente sul video.";
+    writeLog("FOCUS INIZIALE:", getFocusInfo());
 
-      console.log({
-        iframeFocused: focused,
-        activeElement: document.activeElement?.tagName,
-        frameUrl: frame.src
+    for (let i = 1; i <= 3; i++) {
+      const target = document.activeElement || frame;
+
+      const down = dispatchTab(target, "keydown");
+
+      await sleep(50);
+
+      const up = dispatchTab(target, "keyup");
+
+      await sleep(250);
+
+      writeLog("TAB " + i + ":", {
+        keydownInviato: down,
+        keyupInviato: up,
+        ...getFocusInfo()
       });
-    }, 100);
+    }
+
+    status.textContent =
+      "Test completato. Controlla il registro per verificare se il focus è cambiato.";
+
+    writeLog("RISULTATO FINALE:", getFocusInfo());
   }
 
-  focusButton.addEventListener("click", focusPlayer);
-
-  // Clic diretto nell'area esterna dell'iframe: richiede il focus.
-  frame.addEventListener("focus", () => {
-    status.textContent =
-      "L'iframe Hattrick ha ricevuto il focus. Prova F.";
-  });
-
-  frame.addEventListener("load", () => {
-    status.textContent =
-      "Hattrick Sport è stato caricato. Premi il pulsante Focus e prova F.";
-  });
+  focusButton.addEventListener("click", focusAndThreeTabs);
 
   form.addEventListener("submit", event => {
     event.preventDefault();
@@ -238,17 +275,22 @@ button {
       const url = new URL(urlInput.value.trim());
 
       if (!["http:", "https:"].includes(url.protocol)) {
-        throw new Error("Sono consentiti soltanto indirizzi HTTP o HTTPS.");
+        throw new Error("Sono consentiti soltanto URL HTTP e HTTPS.");
       }
 
       frame.src = url.href;
       status.textContent = "Caricamento di " + url.href;
+      log.textContent = "Pagina in caricamento...";
     } catch (error) {
-      status.textContent = "Indirizzo non valido: " + error.message;
+      status.textContent = "URL non valido: " + error.message;
     }
+  });
+
+  frame.addEventListener("load", () => {
+    status.textContent =
+      "Sito caricato. Premi FOCUS + 3 TAB per eseguire il test.";
   });
 })();
 </script>
-
 </body>
 </html>
