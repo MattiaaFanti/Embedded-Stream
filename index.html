@@ -2,275 +2,197 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <title>Hattrick Sport — Fullscreen</title>
+  <title>SportsOnlinee — HD8</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     html, body {
-      margin: 0;
       width: 100%;
       height: 100%;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
       background: #000;
       font-family: Arial, sans-serif;
     }
 
-    #siteFrame {
+    #stage {
       position: fixed;
       inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #playerFrame {
+      position: absolute;
+      inset: 0;
+      display: block;
       width: 100%;
       height: 100%;
       border: 0;
       background: #000;
     }
 
-    #calibrate {
-      position: fixed;
-      z-index: 100;
+    #fullscreenButton {
+      position: absolute;
+      z-index: 2147483647;
       top: max(10px, env(safe-area-inset-top));
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 14px 20px;
-      border: 1px solid #fff;
-      border-radius: 10px;
-      background: #245bc7;
+      left: 10px;
+      min-width: 48px;
+      min-height: 48px;
+      padding: 10px 15px;
+      border: 1px solid rgba(255,255,255,.8);
+      border-radius: 9px;
+      background: rgba(12,15,22,.92);
       color: #fff;
       font-size: 15px;
       font-weight: bold;
-      white-space: nowrap;
-    }
-
-    #target {
-      position: fixed;
-      z-index: 90;
-      width: 46px;
-      height: 46px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transform: translate(-50%, -50%);
-      border: 2px solid #49e68b;
-      border-radius: 8px;
-      background: rgba(10, 80, 40, .24);
-      color: white;
-      font-size: 26px;
-
-      /* Il tocco attraversa il simbolo e raggiunge il player. */
-      pointer-events: none;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    #calibrationLayer {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 80;
-      background: rgba(0, 0, 0, .08);
+      cursor: pointer;
+      box-shadow: 0 3px 15px rgba(0,0,0,.4);
       touch-action: manipulation;
     }
 
-    #calibrationLayer.active {
-      display: block;
-    }
-
-    #instructions {
-      display: none;
-      position: fixed;
-      z-index: 110;
-      left: 50%;
-      bottom: max(22px, env(safe-area-inset-bottom));
-      transform: translateX(-50%);
-      width: calc(100% - 28px);
-      max-width: 400px;
-      padding: 15px;
-      border: 1px solid #ffd54a;
-      border-radius: 10px;
-      background: rgba(15, 18, 25, .97);
-      color: white;
-      text-align: center;
-      font-size: 14px;
-      line-height: 1.5;
-      pointer-events: none;
-    }
-
-    #instructions.visible {
-      display: block;
+    #fullscreenButton:active {
+      background: #245bc7;
     }
 
     #status {
-      position: fixed;
-      z-index: 70;
-      bottom: 8px;
-      left: 8px;
-      padding: 6px 9px;
+      position: absolute;
+      z-index: 2147483646;
+      left: 10px;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      max-width: calc(100% - 20px);
+      padding: 7px 10px;
       border-radius: 6px;
-      background: rgba(0, 0, 0, .78);
-      color: white;
-      font-size: 11px;
+      background: rgba(0,0,0,.75);
+      color: #fff;
+      font-size: 12px;
       pointer-events: none;
+    }
+
+    #status.hidden {
+      display: none;
+    }
+
+    #stage:fullscreen,
+    #stage:-webkit-full-screen {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      border: 0;
+      border-radius: 0;
+      background: #000;
+    }
+
+    #stage:fullscreen #playerFrame,
+    #stage:-webkit-full-screen #playerFrame {
+      width: 100%;
+      height: 100%;
     }
   </style>
 </head>
 
 <body>
+  <main id="stage">
 
-  <iframe
-    id="siteFrame"
-    src="https://htsport.info/calcio.htm"
-    title="Hattrick Sport"
-    allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
-    allowfullscreen>
-  </iframe>
+    <iframe
+      id="playerFrame"
+      src="https://w1.sportsonlinee.click/channels/hd/hd8.php"
+      title="SportsOnlinee HD8"
+      allow="fullscreen *; autoplay *; encrypted-media *; picture-in-picture *"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
 
-  <button id="calibrate" type="button">
-    POSIZIONA FULLSCREEN
-  </button>
+    <button id="fullscreenButton" type="button">
+      ⛶ FULLSCREEN
+    </button>
 
-  <div id="target" aria-hidden="true" style="display:none">⛶</div>
+    <div id="status">
+      Caricamento del player HD8…
+    </div>
 
-  <div id="calibrationLayer"></div>
-
-  <div id="instructions">
-    Tocca il centro del vero pulsante fullscreen del video.
-    La posizione verrà salvata automaticamente.
-  </div>
-
-  <div id="status">Caricamento del player…</div>
+  </main>
 
   <script>
     (() => {
       "use strict";
 
-      const KEY = "hattrick-fullscreen-position-v1";
-
-      const target = document.getElementById("target");
-      const calibrate = document.getElementById("calibrate");
-      const layer = document.getElementById("calibrationLayer");
-      const instructions = document.getElementById("instructions");
+      const stage = document.getElementById("stage");
+      const frame = document.getElementById("playerFrame");
+      const button = document.getElementById("fullscreenButton");
       const status = document.getElementById("status");
 
-      let savedPosition = null;
-      let calibrationMode = false;
-
-      function positionTarget() {
-        if (!savedPosition) return;
-
-        target.style.left = (savedPosition.x * 100) + "vw";
-        target.style.top = (savedPosition.y * 100) + "vh";
-        target.style.display = "flex";
+      function isFullscreen() {
+        return document.fullscreenElement === stage ||
+               document.webkitFullscreenElement === stage;
       }
 
-      function loadPosition() {
+      async function toggleFullscreen() {
         try {
-          const stored = localStorage.getItem(KEY);
-
-          if (stored) {
-            const p = JSON.parse(stored);
-
-            if (
-              Number.isFinite(p.x) &&
-              Number.isFinite(p.y) &&
-              p.x >= 0 && p.x <= 1 &&
-              p.y >= 0 && p.y <= 1
-            ) {
-              savedPosition = p;
+          if (isFullscreen()) {
+            if (document.exitFullscreen) {
+              await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
             }
+            return;
           }
-        } catch (e) {
-          console.warn("Lettura posizione:", e);
-        }
 
-        if (savedPosition) {
-          positionTarget();
-          calibrate.textContent = "RICALIBRA POSIZIONE";
+          if (stage.requestFullscreen) {
+            await stage.requestFullscreen();
+          } else if (stage.webkitRequestFullscreen) {
+            stage.webkitRequestFullscreen();
+          } else {
+            throw new Error(
+              "Fullscreen non supportato da questo browser."
+            );
+          }
+        } catch (error) {
           status.textContent =
-            "Posizione caricata. Tocca il simbolo verde.";
-        } else {
+            "Fullscreen non riuscito: " +
+            (error.name || "Errore") +
+            (error.message ? " — " + error.message : "");
+        }
+      }
+
+      function updateFullscreenState() {
+        if (isFullscreen()) {
+          button.textContent = "✕ ESCI";
           status.textContent =
-            "Prima apertura: posiziona il pulsante fullscreen.";
-        }
-      }
-
-      function startCalibration() {
-        calibrationMode = true;
-        layer.classList.add("active");
-        instructions.classList.add("visible");
-
-        calibrate.textContent = "ANNULLA";
-        status.textContent =
-          "Calibrazione: tocca il pulsante fullscreen reale del video.";
-      }
-
-      function cancelCalibration() {
-        calibrationMode = false;
-        layer.classList.remove("active");
-        instructions.classList.remove("visible");
-
-        calibrate.textContent = savedPosition
-          ? "RICALIBRA POSIZIONE"
-          : "POSIZIONA FULLSCREEN";
-
-        status.textContent = savedPosition
-          ? "Posizione precedente mantenuta."
-          : "Calibrazione annullata.";
-
-        positionTarget();
-      }
-
-      function finishCalibration(event) {
-        if (!calibrationMode) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        savedPosition = {
-          x: Math.max(0, Math.min(1, event.clientX / window.innerWidth)),
-          y: Math.max(0, Math.min(1, event.clientY / window.innerHeight))
-        };
-
-        try {
-          localStorage.setItem(KEY, JSON.stringify(savedPosition));
-        } catch (e) {
-          console.warn("Salvataggio posizione:", e);
-        }
-
-        calibrationMode = false;
-        layer.classList.remove("active");
-        instructions.classList.remove("visible");
-
-        positionTarget();
-
-        calibrate.textContent = "RICALIBRA POSIZIONE";
-        status.textContent =
-          "Salvato su questo dispositivo. Tocca il simbolo verde per il fullscreen.";
-      }
-
-      calibrate.addEventListener("click", () => {
-        if (calibrationMode) {
-          cancelCalibration();
+            "Fullscreen attivo. Premi ESCI o usa il comando Indietro del browser.";
         } else {
-          startCalibration();
+          button.textContent = "⛶ FULLSCREEN";
+          status.textContent = "Player nella pagina normale.";
         }
+      }
+
+      button.addEventListener("click", toggleFullscreen);
+
+      document.addEventListener(
+        "fullscreenchange",
+        updateFullscreenState
+      );
+
+      document.addEventListener(
+        "webkitfullscreenchange",
+        updateFullscreenState
+      );
+
+      frame.addEventListener("load", () => {
+        status.textContent =
+          "Pagina HD8 caricata. Premi FULLSCREEN per espandere il player.";
       });
-
-      layer.addEventListener("pointerdown", finishCalibration);
-
-      window.addEventListener("resize", positionTarget);
-      window.addEventListener("orientationchange", () => {
-        setTimeout(positionTarget, 200);
-      });
-
-      document.getElementById("siteFrame").addEventListener("load", () => {
-        status.textContent = savedPosition
-          ? "Player caricato. Posizione salvata disponibile."
-          : "Player caricato. Tocca POSIZIONA FULLSCREEN.";
-      });
-
-      loadPosition();
     })();
   </script>
 </body>
