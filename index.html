@@ -10,70 +10,42 @@
     * { box-sizing: border-box; }
 
     html, body {
+      margin: 0;
       width: 100%;
       height: 100%;
-      margin: 0;
-      padding: 0;
       overflow: hidden;
       background: #000;
       font-family: Arial, sans-serif;
     }
 
-    #stage {
-      position: fixed;
-      inset: 0;
-      overflow: hidden;
-      background: #000;
-    }
-
     #siteFrame {
-      position: absolute;
+      position: fixed;
       inset: 0;
       width: 100%;
       height: 100%;
-      display: block;
       border: 0;
       background: #000;
     }
 
-    #toolbar {
+    #calibrate {
       position: fixed;
-      z-index: 2147483647;
-      top: max(8px, env(safe-area-inset-top));
+      z-index: 100;
+      top: max(10px, env(safe-area-inset-top));
       left: 50%;
       transform: translateX(-50%);
-      display: flex;
-      justify-content: center;
-      gap: 7px;
-      width: max-content;
-      max-width: calc(100vw - 16px);
-      padding: 8px;
-      border: 1px solid #596579;
+      padding: 14px 20px;
+      border: 1px solid #fff;
       border-radius: 10px;
-      background: rgba(12,16,24,.96);
-      box-shadow: 0 3px 16px rgba(0,0,0,.5);
-    }
-
-    #toolbar button {
-      padding: 12px 13px;
-      border: 1px solid #707c90;
-      border-radius: 7px;
-      background: #202a3b;
+      background: #245bc7;
       color: #fff;
-      font-size: 12px;
+      font-size: 15px;
       font-weight: bold;
-      cursor: pointer;
       white-space: nowrap;
-    }
-
-    #toolbar button.primary {
-      background: #2463d5;
-      border-color: #75a0f5;
     }
 
     #target {
       position: fixed;
-      z-index: 2147483646;
+      z-index: 90;
       width: 46px;
       height: 46px;
       display: flex;
@@ -82,29 +54,23 @@
       transform: translate(-50%, -50%);
       border: 2px solid #49e68b;
       border-radius: 8px;
-      color: #fff;
-      background: rgba(10,80,40,.25);
-      font-size: 25px;
+      background: rgba(10, 80, 40, .24);
+      color: white;
+      font-size: 26px;
+
+      /* Il tocco attraversa il simbolo e raggiunge il player. */
+      pointer-events: none;
       user-select: none;
       -webkit-user-select: none;
-
-      /* Essenziale: il tocco passa al player sottostante. */
-      pointer-events: none;
-      touch-action: none;
-    }
-
-    #target.calibrating {
-      border-color: #ffd54a;
-      background: rgba(160,110,0,.45);
     }
 
     #calibrationLayer {
+      display: none;
       position: fixed;
       inset: 0;
-      z-index: 2147483645;
-      display: none;
-      background: rgba(0,0,0,.06);
-      touch-action: none;
+      z-index: 80;
+      background: rgba(0, 0, 0, .08);
+      touch-action: manipulation;
     }
 
     #calibrationLayer.active {
@@ -112,23 +78,23 @@
     }
 
     #instructions {
+      display: none;
       position: fixed;
-      z-index: 2147483647;
+      z-index: 110;
       left: 50%;
-      bottom: max(24px, env(safe-area-inset-bottom));
+      bottom: max(22px, env(safe-area-inset-bottom));
       transform: translateX(-50%);
-      width: max-content;
-      max-width: calc(100vw - 24px);
-      padding: 13px 16px;
+      width: calc(100% - 28px);
+      max-width: 400px;
+      padding: 15px;
       border: 1px solid #ffd54a;
       border-radius: 10px;
-      background: rgba(15,18,25,.97);
-      color: #fff;
-      font-size: 14px;
-      line-height: 1.45;
+      background: rgba(15, 18, 25, .97);
+      color: white;
       text-align: center;
+      font-size: 14px;
+      line-height: 1.5;
       pointer-events: none;
-      display: none;
     }
 
     #instructions.visible {
@@ -137,322 +103,174 @@
 
     #status {
       position: fixed;
-      z-index: 2147483644;
-      left: 8px;
+      z-index: 70;
       bottom: 8px;
-      max-width: calc(100vw - 16px);
-      padding: 7px 9px;
+      left: 8px;
+      padding: 6px 9px;
       border-radius: 6px;
-      background: rgba(0,0,0,.78);
-      color: #fff;
+      background: rgba(0, 0, 0, .78);
+      color: white;
       font-size: 11px;
-      line-height: 1.4;
       pointer-events: none;
-    }
-
-    @media (max-width: 600px) {
-      #toolbar {
-        gap: 4px;
-        padding: 5px;
-      }
-
-      #toolbar button {
-        padding: 12px 8px;
-        font-size: 11px;
-      }
-
-      #instructions {
-        font-size: 13px;
-      }
     }
   </style>
 </head>
 
 <body>
-  <main id="stage">
-    <iframe
-      id="siteFrame"
-      src="https://htsport.info/calcio.htm"
-      title="Hattrick Sport"
-      allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
-      allowfullscreen>
-    </iframe>
-  </main>
 
-  <div id="toolbar">
-    <button id="calibrateButton" class="primary" type="button">
-      CALIBRA POSIZIONE
-    </button>
-  </div>
+  <iframe
+    id="siteFrame"
+    src="https://htsport.info/calcio.htm"
+    title="Hattrick Sport"
+    allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
+    allowfullscreen>
+  </iframe>
 
-  <div id="target" aria-hidden="true">⛶</div>
+  <button id="calibrate" type="button">
+    POSIZIONA FULLSCREEN
+  </button>
+
+  <div id="target" aria-hidden="true" style="display:none">⛶</div>
 
   <div id="calibrationLayer"></div>
 
   <div id="instructions">
-    Tocca il centro del pulsante fullscreen originale del video.
+    Tocca il centro del vero pulsante fullscreen del video.
+    La posizione verrà salvata automaticamente.
   </div>
 
-  <div id="status" role="status" aria-live="polite">
-    Caricamento delle coordinate…
-  </div>
+  <div id="status">Caricamento del player…</div>
 
   <script>
     (() => {
       "use strict";
 
+      const KEY = "hattrick-fullscreen-position-v1";
+
       const target = document.getElementById("target");
-      const button = document.getElementById("calibrateButton");
+      const calibrate = document.getElementById("calibrate");
       const layer = document.getElementById("calibrationLayer");
       const instructions = document.getElementById("instructions");
       const status = document.getElementById("status");
 
-      const STORAGE_KEY = "hattrick-target-tap-calibration-v2";
+      let savedPosition = null;
+      let calibrationMode = false;
 
-      let calibrating = false;
-      let activeProfile = getProfile();
+      function positionTarget() {
+        if (!savedPosition) return;
 
-      const positions = {
-        portrait: null,
-        landscape: null
-      };
-
-      const fallback = { x: 0.92, y: 0.88 };
-
-      function getProfile() {
-        return window.innerWidth >= window.innerHeight
-          ? "landscape"
-          : "portrait";
+        target.style.left = (savedPosition.x * 100) + "vw";
+        target.style.top = (savedPosition.y * 100) + "vh";
+        target.style.display = "flex";
       }
 
-      function clamp(value, min, max) {
-        return Math.max(min, Math.min(value, max));
-      }
-
-      function maxPosition() {
-        return {
-          x: Math.max(0, window.innerWidth - target.offsetWidth),
-          y: Math.max(0, window.innerHeight - target.offsetHeight)
-        };
-      }
-
-      function setTargetPosition(centerX, centerY) {
-        target.style.left = clamp(centerX, 0, window.innerWidth) + "px";
-        target.style.top = clamp(centerY, 0, window.innerHeight) + "px";
-      }
-
-      function applySavedPosition() {
-        activeProfile = getProfile();
-
-        const ratio = positions[activeProfile] || fallback;
-        const max = maxPosition();
-
-        setTargetPosition(
-          ratio.x * max.x + target.offsetWidth / 2,
-          ratio.y * max.y + target.offsetHeight / 2
-        );
-
-        status.textContent = positions[activeProfile]
-          ? "Posizione salvata caricata per schermo " +
-            (activeProfile === "portrait" ? "verticale." : "orizzontale.")
-          : "Prima apertura: premi CALIBRA POSIZIONE.";
-      }
-
-      function loadPositions() {
+      function loadPosition() {
         try {
-          const data = JSON.parse(
-            localStorage.getItem(STORAGE_KEY) || "{}"
-          );
+          const stored = localStorage.getItem(KEY);
 
-          for (const profile of ["portrait", "landscape"]) {
-            const p = data[profile];
+          if (stored) {
+            const p = JSON.parse(stored);
 
             if (
-              p &&
               Number.isFinite(p.x) &&
               Number.isFinite(p.y) &&
               p.x >= 0 && p.x <= 1 &&
               p.y >= 0 && p.y <= 1
             ) {
-              positions[profile] = p;
+              savedPosition = p;
             }
           }
-        } catch (error) {
-          console.warn("Lettura delle posizioni salvate fallita:", error);
+        } catch (e) {
+          console.warn("Lettura posizione:", e);
         }
 
-        // Mantiene la compatibilità con i vecchi link #target=x,y.
-        const legacy = location.hash.match(
-          /(?:^#|[;&])target=([0-9]*\.?[0-9]+),([0-9]*\.?[0-9]+)/
-        );
-
-        if (legacy && !positions[activeProfile]) {
-          const x = Number(legacy[1]);
-          const y = Number(legacy[2]);
-
-          if (
-            Number.isFinite(x) && Number.isFinite(y) &&
-            x >= 0 && x <= 1 &&
-            y >= 0 && y <= 1
-          ) {
-            positions[activeProfile] = { x, y };
-          }
-        }
-
-        applySavedPosition();
-        persistPositions();
-      }
-
-      function persistPositions() {
-        try {
-          localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify(positions)
-          );
-        } catch (error) {
-          console.warn("Salvataggio delle posizioni fallito:", error);
+        if (savedPosition) {
+          positionTarget();
+          calibrate.textContent = "RICALIBRA POSIZIONE";
+          status.textContent =
+            "Posizione caricata. Tocca il simbolo verde.";
+        } else {
+          status.textContent =
+            "Prima apertura: posiziona il pulsante fullscreen.";
         }
       }
 
-      function updateURL() {
-        const parts = [];
-
-        for (const key of ["portrait", "landscape"]) {
-          const p = positions[key];
-
-          if (p) {
-            parts.push(
-              key + "=" +
-              p.x.toFixed(4) + "," +
-              p.y.toFixed(4)
-            );
-          }
-        }
-
-        const hash = parts.length ? "#" + parts.join(";") : "";
-
-        history.replaceState(
-          null,
-          "",
-          location.pathname + location.search + hash
-        );
-      }
-
-      function saveCurrentPosition(centerX, centerY) {
-        const max = maxPosition();
-
-        positions[activeProfile] = {
-          x: max.x > 0
-            ? clamp((centerX - target.offsetWidth / 2) / max.x, 0, 1)
-            : 0.5,
-
-          y: max.y > 0
-            ? clamp((centerY - target.offsetHeight / 2) / max.y, 0, 1)
-            : 0.5
-        };
-
-        persistPositions();
-        updateURL();
-
-        status.textContent =
-          "Posizione " + activeProfile + " salvata permanentemente nel browser.";
-      }
-
-      function enterCalibration() {
-        calibrating = true;
-
+      function startCalibration() {
+        calibrationMode = true;
         layer.classList.add("active");
-        target.classList.add("calibrating");
         instructions.classList.add("visible");
 
-        button.textContent = "ANNULLA CALIBRAZIONE";
-        button.classList.remove("primary");
-
+        calibrate.textContent = "ANNULLA";
         status.textContent =
-          "Tocca il centro del vero pulsante fullscreen.";
+          "Calibrazione: tocca il pulsante fullscreen reale del video.";
       }
 
       function cancelCalibration() {
-        calibrating = false;
-
+        calibrationMode = false;
         layer.classList.remove("active");
-        target.classList.remove("calibrating");
         instructions.classList.remove("visible");
 
-        button.textContent = "CALIBRA POSIZIONE";
-        button.classList.add("primary");
+        calibrate.textContent = savedPosition
+          ? "RICALIBRA POSIZIONE"
+          : "POSIZIONA FULLSCREEN";
 
-        status.textContent = "Calibrazione annullata.";
+        status.textContent = savedPosition
+          ? "Posizione precedente mantenuta."
+          : "Calibrazione annullata.";
+
+        positionTarget();
       }
 
       function finishCalibration(event) {
-        if (!calibrating) return;
+        if (!calibrationMode) return;
 
         event.preventDefault();
         event.stopPropagation();
 
-        const x = event.clientX;
-        const y = event.clientY;
+        savedPosition = {
+          x: Math.max(0, Math.min(1, event.clientX / window.innerWidth)),
+          y: Math.max(0, Math.min(1, event.clientY / window.innerHeight))
+        };
 
-        setTargetPosition(x, y);
-        saveCurrentPosition(x, y);
+        try {
+          localStorage.setItem(KEY, JSON.stringify(savedPosition));
+        } catch (e) {
+          console.warn("Salvataggio posizione:", e);
+        }
 
-        calibrating = false;
-
+        calibrationMode = false;
         layer.classList.remove("active");
-        target.classList.remove("calibrating");
         instructions.classList.remove("visible");
 
-        button.textContent = "RICALIBRA POSIZIONE";
-        button.classList.add("primary");
+        positionTarget();
 
-        // Mantiene il bersaglio trasparente ai tocchi:
-        // il clic raggiungerà il controllo sotto di esso.
-        target.style.pointerEvents = "none";
-
+        calibrate.textContent = "RICALIBRA POSIZIONE";
         status.textContent =
-          "Posizione salvata. Tocca il simbolo verde per attivare il pulsante sottostante.";
+          "Salvato su questo dispositivo. Tocca il simbolo verde per il fullscreen.";
       }
 
-      button.addEventListener("click", () => {
-        if (calibrating) {
+      calibrate.addEventListener("click", () => {
+        if (calibrationMode) {
           cancelCalibration();
         } else {
-          enterCalibration();
+          startCalibration();
         }
       });
 
       layer.addEventListener("pointerdown", finishCalibration);
 
-      function handleResize() {
-        const nextProfile = getProfile();
-
-        if (nextProfile !== activeProfile) {
-          applySavedPosition();
-          return;
-        }
-
-        const ratio = positions[activeProfile] || fallback;
-        const max = maxPosition();
-
-        setTargetPosition(
-          ratio.x * max.x + target.offsetWidth / 2,
-          ratio.y * max.y + target.offsetHeight / 2
-        );
-      }
-
-      window.addEventListener("resize", handleResize);
-
+      window.addEventListener("resize", positionTarget);
       window.addEventListener("orientationchange", () => {
-        setTimeout(handleResize, 250);
+        setTimeout(positionTarget, 200);
       });
 
       document.getElementById("siteFrame").addEventListener("load", () => {
-        status.textContent =
-          "Hattrick caricato. Le coordinate vengono mantenute nel browser.";
+        status.textContent = savedPosition
+          ? "Player caricato. Posizione salvata disponibile."
+          : "Player caricato. Tocca POSIZIONA FULLSCREEN.";
       });
 
-      loadPositions();
+      loadPosition();
     })();
   </script>
 </body>
