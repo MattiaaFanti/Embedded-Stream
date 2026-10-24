@@ -40,22 +40,24 @@
 
     #focusButton {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       z-index: 2147483647;
-      padding: 13px 17px;
+      padding: 16px 24px;
       border: 2px solid #fff;
-      border-radius: 8px;
+      border-radius: 10px;
       background: rgba(15, 20, 30, .96);
       color: #fff;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 3px 18px rgba(0, 0, 0, .5);
+      box-shadow: 0 3px 24px rgba(0, 0, 0, .65);
     }
 
     #focusButton:active {
       background: #245bc7;
+      transform: translate(-50%, -50%) scale(.97);
     }
 
     #status {
