@@ -4,12 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <title>Hattrick Sport — Fullscreen Pass-through</title>
+  <title>Hattrick Sport — Fullscreen</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html, body {
       width: 100%;
@@ -24,8 +22,8 @@
     #stage {
       position: fixed;
       inset: 0;
-      background: #000;
       overflow: hidden;
+      background: #000;
     }
 
     #siteFrame {
@@ -38,37 +36,134 @@
       background: #000;
     }
 
+    #toolbar {
+      position: fixed;
+      z-index: 2147483647;
+      top: max(8px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: center;
+      gap: 7px;
+      width: max-content;
+      max-width: calc(100vw - 16px);
+      padding: 8px;
+      border: 1px solid #596579;
+      border-radius: 10px;
+      background: rgba(12,16,24,.96);
+      box-shadow: 0 3px 16px rgba(0,0,0,.5);
+    }
+
+    #toolbar button {
+      padding: 12px 13px;
+      border: 1px solid #707c90;
+      border-radius: 7px;
+      background: #202a3b;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #toolbar button.primary {
+      background: #2463d5;
+      border-color: #75a0f5;
+    }
+
     #target {
       position: fixed;
       z-index: 2147483646;
-      width: 60px;
-      height: 50px;
+      width: 46px;
+      height: 46px;
       display: flex;
       align-items: center;
       justify-content: center;
+      transform: translate(-50%, -50%);
       border: 2px solid #49e68b;
       border-radius: 8px;
       color: #fff;
-      background: rgba(10, 80, 40, .28);
+      background: rgba(10,80,40,.25);
       font-size: 25px;
-      pointer-events: none;
       user-select: none;
       -webkit-user-select: none;
-      box-shadow: none;
+
+      /* Essenziale: il tocco passa al player sottostante. */
+      pointer-events: none;
+      touch-action: none;
+    }
+
+    #target.calibrating {
+      border-color: #ffd54a;
+      background: rgba(160,110,0,.45);
+    }
+
+    #calibrationLayer {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483645;
+      display: none;
+      background: rgba(0,0,0,.06);
+      touch-action: none;
+    }
+
+    #calibrationLayer.active {
+      display: block;
+    }
+
+    #instructions {
+      position: fixed;
+      z-index: 2147483647;
+      left: 50%;
+      bottom: max(24px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: calc(100vw - 24px);
+      padding: 13px 16px;
+      border: 1px solid #ffd54a;
+      border-radius: 10px;
+      background: rgba(15,18,25,.97);
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.45;
+      text-align: center;
+      pointer-events: none;
+      display: none;
+    }
+
+    #instructions.visible {
+      display: block;
     }
 
     #status {
       position: fixed;
-      z-index: 2147483645;
-      left: 10px;
-      bottom: 10px;
-      max-width: calc(100vw - 20px);
-      padding: 8px 10px;
+      z-index: 2147483644;
+      left: 8px;
+      bottom: 8px;
+      max-width: calc(100vw - 16px);
+      padding: 7px 9px;
       border-radius: 6px;
-      background: rgba(0, 0, 0, .8);
+      background: rgba(0,0,0,.78);
       color: #fff;
-      font-size: 12px;
+      font-size: 11px;
+      line-height: 1.4;
       pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      #toolbar {
+        gap: 4px;
+        padding: 5px;
+      }
+
+      #toolbar button {
+        padding: 12px 8px;
+        font-size: 11px;
+      }
+
+      #instructions {
+        font-size: 13px;
+      }
     }
   </style>
 </head>
@@ -84,10 +179,22 @@
     </iframe>
   </main>
 
+  <div id="toolbar">
+    <button id="calibrateButton" class="primary" type="button">
+      CALIBRA POSIZIONE
+    </button>
+  </div>
+
   <div id="target" aria-hidden="true">⛶</div>
 
-  <div id="status">
-    Posizionamento automatico del bersaglio…
+  <div id="calibrationLayer"></div>
+
+  <div id="instructions">
+    Tocca il centro del pulsante fullscreen originale del video.
+  </div>
+
+  <div id="status" role="status" aria-live="polite">
+    Caricamento delle coordinate…
   </div>
 
   <script>
@@ -95,70 +202,257 @@
       "use strict";
 
       const target = document.getElementById("target");
+      const button = document.getElementById("calibrateButton");
+      const layer = document.getElementById("calibrationLayer");
+      const instructions = document.getElementById("instructions");
       const status = document.getElementById("status");
 
-      // Dimensioni ricavate dalla calibrazione sul PC.
-      const PLAYER_MAX_WIDTH = 834;
-      const PLAYER_ASPECT_RATIO = 16 / 9;
+      const STORAGE_KEY = "hattrick-target-tap-calibration-v2";
 
-      // Offset verticale calibrato rispetto al bordo del video.
-      const TARGET_Y_OFFSET = 18;
+      let calibrating = false;
+      let activeProfile = getProfile();
 
-      function positionTarget() {
-        const viewportWidth = document.documentElement.clientWidth;
-        const viewportHeight = document.documentElement.clientHeight;
+      const positions = {
+        portrait: null,
+        landscape: null
+      };
 
-        const targetWidth = target.offsetWidth;
-        const targetHeight = target.offsetHeight;
+      const fallback = { x: 0.92, y: 0.88 };
 
-        // Adatta la larghezza alla finestra, mantenendo il limite
-        // massimo dedotto dalla calibrazione originale.
-        const widthAllowedByHeight =
-          Math.max(0, viewportHeight - targetHeight + TARGET_Y_OFFSET)
-          * PLAYER_ASPECT_RATIO;
+      function getProfile() {
+        return window.innerWidth >= window.innerHeight
+          ? "landscape"
+          : "portrait";
+      }
 
-        const playerWidth = Math.min(
-          viewportWidth,
-          PLAYER_MAX_WIDTH,
-          widthAllowedByHeight
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(value, max));
+      }
+
+      function maxPosition() {
+        return {
+          x: Math.max(0, window.innerWidth - target.offsetWidth),
+          y: Math.max(0, window.innerHeight - target.offsetHeight)
+        };
+      }
+
+      function setTargetPosition(centerX, centerY) {
+        target.style.left = clamp(centerX, 0, window.innerWidth) + "px";
+        target.style.top = clamp(centerY, 0, window.innerHeight) + "px";
+      }
+
+      function applySavedPosition() {
+        activeProfile = getProfile();
+
+        const ratio = positions[activeProfile] || fallback;
+        const max = maxPosition();
+
+        setTargetPosition(
+          ratio.x * max.x + target.offsetWidth / 2,
+          ratio.y * max.y + target.offsetHeight / 2
         );
 
-        const playerHeight = playerWidth / PLAYER_ASPECT_RATIO;
+        status.textContent = positions[activeProfile]
+          ? "Posizione salvata caricata per schermo " +
+            (activeProfile === "portrait" ? "verticale." : "orizzontale.")
+          : "Prima apertura: premi CALIBRA POSIZIONE.";
+      }
 
-        // Il bersaglio resta vicino all'angolo inferiore destro
-        // dell'area video stimata.
-        const left = playerWidth - targetWidth;
-        const top = playerHeight - TARGET_Y_OFFSET;
+      function loadPositions() {
+        try {
+          const data = JSON.parse(
+            localStorage.getItem(STORAGE_KEY) || "{}"
+          );
 
-        target.style.left =
-          Math.max(0, Math.min(left, viewportWidth - targetWidth)) + "px";
+          for (const profile of ["portrait", "landscape"]) {
+            const p = data[profile];
 
-        target.style.top =
-          Math.max(0, Math.min(top, viewportHeight - targetHeight)) + "px";
+            if (
+              p &&
+              Number.isFinite(p.x) &&
+              Number.isFinite(p.y) &&
+              p.x >= 0 && p.x <= 1 &&
+              p.y >= 0 && p.y <= 1
+            ) {
+              positions[profile] = p;
+            }
+          }
+        } catch (error) {
+          console.warn("Lettura delle posizioni salvate fallita:", error);
+        }
+
+        // Mantiene la compatibilità con i vecchi link #target=x,y.
+        const legacy = location.hash.match(
+          /(?:^#|[;&])target=([0-9]*\.?[0-9]+),([0-9]*\.?[0-9]+)/
+        );
+
+        if (legacy && !positions[activeProfile]) {
+          const x = Number(legacy[1]);
+          const y = Number(legacy[2]);
+
+          if (
+            Number.isFinite(x) && Number.isFinite(y) &&
+            x >= 0 && x <= 1 &&
+            y >= 0 && y <= 1
+          ) {
+            positions[activeProfile] = { x, y };
+          }
+        }
+
+        applySavedPosition();
+        persistPositions();
+      }
+
+      function persistPositions() {
+        try {
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(positions)
+          );
+        } catch (error) {
+          console.warn("Salvataggio delle posizioni fallito:", error);
+        }
+      }
+
+      function updateURL() {
+        const parts = [];
+
+        for (const key of ["portrait", "landscape"]) {
+          const p = positions[key];
+
+          if (p) {
+            parts.push(
+              key + "=" +
+              p.x.toFixed(4) + "," +
+              p.y.toFixed(4)
+            );
+          }
+        }
+
+        const hash = parts.length ? "#" + parts.join(";") : "";
+
+        history.replaceState(
+          null,
+          "",
+          location.pathname + location.search + hash
+        );
+      }
+
+      function saveCurrentPosition(centerX, centerY) {
+        const max = maxPosition();
+
+        positions[activeProfile] = {
+          x: max.x > 0
+            ? clamp((centerX - target.offsetWidth / 2) / max.x, 0, 1)
+            : 0.5,
+
+          y: max.y > 0
+            ? clamp((centerY - target.offsetHeight / 2) / max.y, 0, 1)
+            : 0.5
+        };
+
+        persistPositions();
+        updateURL();
 
         status.textContent =
-          "Bersaglio adattivo: " +
-          Math.round(playerWidth) + " × " +
-          Math.round(playerHeight) + " px";
+          "Posizione " + activeProfile + " salvata permanentemente nel browser.";
       }
 
-      let resizeTimer;
+      function enterCalibration() {
+        calibrating = true;
 
-      function schedulePosition() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(positionTarget, 150);
+        layer.classList.add("active");
+        target.classList.add("calibrating");
+        instructions.classList.add("visible");
+
+        button.textContent = "ANNULLA CALIBRAZIONE";
+        button.classList.remove("primary");
+
+        status.textContent =
+          "Tocca il centro del vero pulsante fullscreen.";
       }
 
-      window.addEventListener("resize", schedulePosition);
-      window.addEventListener("orientationchange", schedulePosition);
+      function cancelCalibration() {
+        calibrating = false;
 
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", schedulePosition);
+        layer.classList.remove("active");
+        target.classList.remove("calibrating");
+        instructions.classList.remove("visible");
+
+        button.textContent = "CALIBRA POSIZIONE";
+        button.classList.add("primary");
+
+        status.textContent = "Calibrazione annullata.";
       }
 
-      positionTarget();
+      function finishCalibration(event) {
+        if (!calibrating) return;
 
-      console.log("Posizionamento adattivo attivo.");
+        event.preventDefault();
+        event.stopPropagation();
+
+        const x = event.clientX;
+        const y = event.clientY;
+
+        setTargetPosition(x, y);
+        saveCurrentPosition(x, y);
+
+        calibrating = false;
+
+        layer.classList.remove("active");
+        target.classList.remove("calibrating");
+        instructions.classList.remove("visible");
+
+        button.textContent = "RICALIBRA POSIZIONE";
+        button.classList.add("primary");
+
+        // Mantiene il bersaglio trasparente ai tocchi:
+        // il clic raggiungerà il controllo sotto di esso.
+        target.style.pointerEvents = "none";
+
+        status.textContent =
+          "Posizione salvata. Tocca il simbolo verde per attivare il pulsante sottostante.";
+      }
+
+      button.addEventListener("click", () => {
+        if (calibrating) {
+          cancelCalibration();
+        } else {
+          enterCalibration();
+        }
+      });
+
+      layer.addEventListener("pointerdown", finishCalibration);
+
+      function handleResize() {
+        const nextProfile = getProfile();
+
+        if (nextProfile !== activeProfile) {
+          applySavedPosition();
+          return;
+        }
+
+        const ratio = positions[activeProfile] || fallback;
+        const max = maxPosition();
+
+        setTargetPosition(
+          ratio.x * max.x + target.offsetWidth / 2,
+          ratio.y * max.y + target.offsetHeight / 2
+        );
+      }
+
+      window.addEventListener("resize", handleResize);
+
+      window.addEventListener("orientationchange", () => {
+        setTimeout(handleResize, 250);
+      });
+
+      document.getElementById("siteFrame").addEventListener("load", () => {
+        status.textContent =
+          "Hattrick caricato. Le coordinate vengono mantenute nel browser.";
+      });
+
+      loadPositions();
     })();
   </script>
 </body>
