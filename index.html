@@ -2,20 +2,19 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <title>Hattrick Sport — Player Focus</title>
+  <title>Hattrick Sport — Fullscreen Pass-through</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html, body {
-      margin: 0;
-      padding: 0;
       width: 100%;
       height: 100%;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
       background: #000;
       font-family: Arial, sans-serif;
@@ -31,328 +30,293 @@
     #siteFrame {
       position: absolute;
       inset: 0;
-      display: block;
       width: 100%;
       height: 100%;
+      display: block;
       border: 0;
       background: #000;
     }
 
-    #focusButton {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+    /* Barra strumenti, separata dal punto di clic. */
+    #toolbar {
+      position: fixed;
       z-index: 2147483647;
-      padding: 16px 24px;
-      border: 2px solid #fff;
-      border-radius: 10px;
-      background: rgba(15, 20, 30, .96);
+      top: 10px;
+      right: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      max-width: calc(100vw - 20px);
+      padding: 8px;
+      border: 1px solid #596579;
+      border-radius: 9px;
+      background: rgba(12, 16, 24, .97);
+      box-shadow: 0 3px 16px rgba(0,0,0,.5);
+    }
+
+    #toolbar button {
+      padding: 9px 11px;
+      border: 1px solid #707c90;
+      border-radius: 6px;
+      background: #202a3b;
       color: #fff;
-      font-size: 16px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 3px 24px rgba(0, 0, 0, .65);
     }
 
-    #focusButton:active {
-      background: #245bc7;
-      transform: translate(-50%, -50%) scale(.97);
-    }
-
-    #focusButton:disabled {
-      opacity: .7;
-      cursor: wait;
+    #toolbar button.primary {
+      background: #2463d5;
+      border-color: #75a0f5;
     }
 
     #status {
-      position: absolute;
-      left: 12px;
-      bottom: 12px;
+      position: fixed;
       z-index: 2147483646;
-      max-width: calc(100% - 24px);
-      padding: 8px 11px;
+      bottom: 10px;
+      left: 10px;
+      max-width: calc(100vw - 20px);
+      padding: 8px 10px;
       border-radius: 6px;
-      background: rgba(0, 0, 0, .8);
+      background: rgba(0,0,0,.85);
       color: #fff;
       font-size: 12px;
       line-height: 1.4;
       pointer-events: none;
+    }
+
+    /*
+      Questo elemento si può trascinare solo in modalità
+      calibrazione. In modalità pass-through non intercetta
+      il clic: il browser colpisce il contenuto sottostante.
+    */
+    #target {
+      position: fixed;
+      z-index: 2147483646;
+      left: calc(50vw - 30px);
+      top: calc(50vh - 25px);
+      width: 60px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed #fff;
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(10, 15, 24, .92);
+      box-shadow: 0 2px 15px rgba(0,0,0,.65);
+      font-size: 25px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    #target.editing {
+      cursor: move;
+      pointer-events: auto;
+      border-color: #ffd54a;
+      background: rgba(70, 50, 0, .94);
+    }
+
+    #target.passthrough {
+      cursor: default;
+      pointer-events: none;
+      border: 2px solid #49e68b;
+      background: rgba(10, 80, 40, .28);
+      box-shadow: none;
+    }
+
+    #targetLabel {
+      position: fixed;
+      z-index: 2147483645;
+      left: 50%;
+      bottom: 48px;
+      transform: translateX(-50%);
+      max-width: calc(100vw - 24px);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.8);
+      color: white;
+      font-size: 12px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      #toolbar {
+        top: 6px;
+        right: 6px;
+        left: 6px;
+        justify-content: center;
+      }
+
+      #toolbar button {
+        padding: 9px 8px;
+        font-size: 11px;
+      }
     }
   </style>
 </head>
 
 <body>
   <main id="stage">
-
     <iframe
       id="siteFrame"
       src="https://htsport.info/calcio.htm"
       title="Hattrick Sport"
-      tabindex="0"
       allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
       allowfullscreen>
     </iframe>
-
-    <button id="focusButton" type="button">
-      FOCUS PLAYER
-    </button>
-
-    <div id="status" role="status" aria-live="polite">
-      Hattrick Sport in caricamento.
-    </div>
-
   </main>
+
+  <div id="toolbar">
+    <button id="modeButton" class="primary">
+      1. BLOCCA POSIZIONE
+    </button>
+    <button id="resetButton">
+      RIPOSIZIONA
+    </button>
+  </div>
+
+  <div id="target" class="editing" aria-label="Punto fullscreen">
+    ⛶
+  </div>
+
+  <div id="targetLabel">
+    CALIBRAZIONE: trascina ⛶ sopra il vero pulsante fullscreen del video
+  </div>
+
+  <div id="status">
+    Il bersaglio intercetta i tocchi durante la calibrazione.
+  </div>
 
   <script>
     (() => {
       "use strict";
 
-      const frame = document.getElementById("siteFrame");
-      const button = document.getElementById("focusButton");
+      const target = document.getElementById("target");
+      const modeButton = document.getElementById("modeButton");
+      const resetButton = document.getElementById("resetButton");
       const status = document.getElementById("status");
+      const label = document.getElementById("targetLabel");
 
-      const sleep = ms =>
-        new Promise(resolve => setTimeout(resolve, ms));
+      const STORAGE_KEY = "hattrick-fullscreen-target-v1";
 
-      function requestWindowFocus(win) {
+      let editing = true;
+      let dragging = false;
+      let pointerOffsetX = 0;
+      let pointerOffsetY = 0;
+
+      function savePosition() {
         try {
-          win.focus();
-          return true;
-        } catch (error) {
-          return false;
-        }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            left: target.offsetLeft,
+            top: target.offsetTop
+          }));
+        } catch (_) {}
       }
 
-      function collectFrames() {
-        const collected = [];
-        const visited = new Set();
-
-        function visit(win, path) {
-          if (!win || visited.has(win)) return;
-
-          visited.add(win);
-
-          let count;
-
-          try {
-            count = win.length;
-          } catch (error) {
-            collected.push({
-              win,
-              path,
-              children: null,
-              readable: false
-            });
-            return;
-          }
-
-          collected.push({
-            win,
-            path,
-            children: count,
-            readable: true
-          });
-
-          for (let i = 0; i < count; i++) {
-            try {
-              visit(win.frames[i], path.concat(i));
-            } catch (error) {
-              console.warn(
-                "Frame non raggiungibile:",
-                path.concat(i),
-                error
-              );
-            }
-          }
-        }
-
+      function restorePosition() {
         try {
-          visit(frame.contentWindow, ["siteFrame"]);
-        } catch (error) {
-          console.warn(
-            "Impossibile accedere al frame Hattrick:",
-            error
+          const saved = JSON.parse(
+            localStorage.getItem(STORAGE_KEY) || "null"
           );
-        }
 
-        return collected;
-      }
+          if (!saved) return;
 
-      function createFEvent(win, type) {
-        const options = {
-          key: "f",
-          code: "KeyF",
-          keyCode: 70,
-          which: 70,
-          bubbles: true,
-          cancelable: true,
-          composed: true
-        };
-
-        try {
-          return new win.KeyboardEvent(type, options);
-        } catch (_) {
-          return new KeyboardEvent(type, options);
-        }
-      }
-
-      function dispatchF(context, type) {
-        const win = context.win;
-
-        // Tentativo nel documento del contesto, se accessibile.
-        try {
-          const doc = win.document;
-          const target =
-            doc.activeElement &&
-            doc.activeElement !== doc.body
-              ? doc.activeElement
-              : doc;
-
-          const event = createFEvent(win, type);
-          target.dispatchEvent(event);
-
-          return {
-            percorso: context.path.join(" → "),
-            destinazione: target === doc ? "document" : "activeElement",
-            esito: "evento sintetico inviato"
-          };
-        } catch (error) {
-          // Nei frame cross-origin il DOM non è accessibile.
-          // Tentiamo almeno di inviare l'evento alla Window.
-          try {
-            win.dispatchEvent(
-              createFEvent(window, type)
-            );
-
-            return {
-              percorso: context.path.join(" → "),
-              destinazione: "window",
-              esito: "tentativo limitato dal cross-origin"
-            };
-          } catch (innerError) {
-            return {
-              percorso: context.path.join(" → "),
-              destinazione: "nessuna",
-              esito: innerError.message
-            };
+          if (Number.isFinite(saved.left) &&
+              Number.isFinite(saved.top)) {
+            setPosition(saved.left, saved.top);
           }
-        }
+        } catch (_) {}
       }
 
-      async function simulateF(contexts) {
-        // Prima keydown: contesti più profondi per primi.
-        const results = [];
+      function setPosition(left, top) {
+        const maxLeft = Math.max(0, window.innerWidth - target.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - target.offsetHeight);
 
-        for (const context of contexts) {
-          results.push(dispatchF(context, "keydown"));
-        }
+        target.style.left =
+          Math.max(0, Math.min(left, maxLeft)) + "px";
 
-        await sleep(80);
-
-        // Poi keyup nello stesso ordine.
-        for (const context of contexts) {
-          results.push(dispatchF(context, "keyup"));
-        }
-
-        console.log("Risultati tentativo F:");
-        console.table(results);
-
-        return results;
+        target.style.top =
+          Math.max(0, Math.min(top, maxTop)) + "px";
       }
 
-      async function focusPlayer() {
-        button.disabled = true;
-        button.textContent = "RICERCA PLAYER…";
-        status.textContent = "Richiesta del focus in corso…";
+      function setMode(passThrough) {
+        editing = !passThrough;
 
-        try {
-          frame.focus({ preventScroll: true });
-        } catch (_) {
-          frame.focus();
-        }
+        target.classList.toggle("editing", editing);
+        target.classList.toggle("passthrough", passThrough);
 
-        requestWindowFocus(frame.contentWindow);
+        modeButton.textContent = editing
+          ? "1. BLOCCA POSIZIONE"
+          : "MODIFICA POSIZIONE";
 
-        await sleep(300);
+        label.textContent = editing
+          ? "CALIBRAZIONE: trascina ⛶ sopra il vero pulsante fullscreen"
+          : "CLICK-THROUGH ATTIVO: clicca sul simbolo ⛶ per raggiungere il player sottostante";
 
-        let contexts = collectFrames();
+        status.textContent = editing
+          ? "Modalità calibrazione: puoi trascinare il bersaglio."
+          : "Il bersaglio non intercetta più i clic. Prova a cliccare sopra ⛶.";
 
-        if (contexts.length <= 1) {
-          await sleep(700);
-          contexts = collectFrames();
-        }
-
-        // Focus: contesti più esterni prima di quelli interni.
-        contexts.sort((a, b) => a.path.length - b.path.length);
-
-        let successfulAttempts = 0;
-
-        for (const context of contexts) {
-          if (requestWindowFocus(context.win)) {
-            successfulAttempts++;
-          }
-
-          await sleep(100);
-        }
-
-        // Ultimo tentativo sul contesto più profondo.
-        if (contexts.length > 0) {
-          const deepest = contexts[contexts.length - 1];
-          requestWindowFocus(deepest.win);
-
-          console.log(
-            "Ultimo contesto focalizzato:",
-            deepest.path.join(" → ")
-          );
-        }
-
-        console.table(
-          contexts.map(context => ({
-            percorso: context.path.join(" → "),
-            profondità: context.path.length,
-            sottoframe: context.children,
-            contestoLeggibile: context.readable
-          }))
-        );
-
-        console.log({
-          contestiIndividuati: contexts.length,
-          tentativiFocusRiusciti: successfulAttempts,
-          pagina: location.href,
-          elementoAttivo: document.activeElement?.tagName,
-          iframeAttivo: document.activeElement === frame
-        });
-
-        // Nuova fase: tentativo di pressione sintetica di F.
-        status.textContent =
-          "Focus richiesto. Tentativo di inviare il tasto F…";
-
-        const deepestFirst = [...contexts].sort(
-          (a, b) => b.path.length - a.path.length
-        );
-
-        const results = await simulateF(deepestFirst);
-
-        const sent = results.filter(
-          item => item.esito === "evento sintetico inviato"
-        ).length;
-
-        status.textContent =
-          "Procedura terminata. Contesti: " + contexts.length +
-          ". Eventi F inviati: " + sent +
-          ". Se il fullscreen non parte, il browser richiede una pressione reale.";
-
-        button.textContent = "RIPROVA FOCUS + F";
-        button.disabled = false;
+        savePosition();
       }
 
-      button.addEventListener("click", focusPlayer);
+      target.addEventListener("pointerdown", event => {
+        if (!editing) return;
 
-      frame.addEventListener("load", () => {
-        status.textContent =
-          "Hattrick caricato. Premi FOCUS PLAYER per tentare focus e F.";
+        dragging = true;
+
+        const rect = target.getBoundingClientRect();
+
+        pointerOffsetX = event.clientX - rect.left;
+        pointerOffsetY = event.clientY - rect.top;
+
+        target.setPointerCapture(event.pointerId);
+        event.preventDefault();
       });
+
+      target.addEventListener("pointermove", event => {
+        if (!editing || !dragging) return;
+
+        setPosition(
+          event.clientX - pointerOffsetX,
+          event.clientY - pointerOffsetY
+        );
+      });
+
+      function endDrag() {
+        if (!dragging) return;
+
+        dragging = false;
+        savePosition();
+      }
+
+      target.addEventListener("pointerup", endDrag);
+      target.addEventListener("pointercancel", endDrag);
+      target.addEventListener("lostpointercapture", endDrag);
+
+      modeButton.addEventListener("click", () => {
+        setMode(editing);
+      });
+
+      resetButton.addEventListener("click", () => {
+        setPosition(
+          window.innerWidth / 2 - target.offsetWidth / 2,
+          window.innerHeight / 2 - target.offsetHeight / 2
+        );
+        savePosition();
+        setMode(false);
+      });
+
+      window.addEventListener("resize", () => {
+        setPosition(target.offsetLeft, target.offsetTop);
+        savePosition();
+      });
+
+      restorePosition();
+      setMode(false);
     })();
   </script>
 </body>
