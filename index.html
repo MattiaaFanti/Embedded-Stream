@@ -1,7 +1,7 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#05070b">
 <title>Hattrick Sport — Video Fullscreen</title>
@@ -24,7 +24,7 @@ html, body {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, Arial, sans-serif;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
 body {
@@ -39,12 +39,15 @@ body {
 header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
 h1 {
   font-size: clamp(17px, 2.4vw, 23px);
   margin: 0;
+  font-weight: 700;
 }
 
 .sub {
@@ -64,9 +67,10 @@ input {
   min-width: 0;
   border: 1px solid var(--edge);
   border-radius: 9px;
-  padding: 11px;
+  padding: 11px 12px;
   background: #0e1420;
   color: var(--text);
+  font-size: 13px;
 }
 
 button {
@@ -75,9 +79,16 @@ button {
   padding: 10px 13px;
   background: #e8edf5;
   color: #101622;
+  font-size: 13px;
   font-weight: 750;
   cursor: pointer;
   white-space: nowrap;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #91b9ff;
+  outline-offset: 2px;
 }
 
 .stage {
@@ -95,10 +106,10 @@ button {
 .stage iframe {
   position: absolute;
   inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   border: 0;
-  display: block;
   background: #000;
 }
 
@@ -110,10 +121,12 @@ button {
 }
 
 .overlay button {
-  background: rgba(10,14,22,.94);
-  color: #fff;
-  border: 1px solid #fff;
-  box-shadow: 0 6px 25px rgba(0,0,0,.4);
+  background: rgba(10, 14, 22, .94);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, .85);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, .4);
+  border-radius: 8px;
+  padding: 11px 13px;
 }
 
 .fsbtn {
@@ -190,6 +203,14 @@ body.is-fullscreen .help {
     padding: 7px;
   }
 
+  .form {
+    gap: 6px;
+  }
+
+  .form button {
+    padding: 10px 11px;
+  }
+
   .stage {
     height: 67vh;
     min-height: 210px;
@@ -208,7 +229,7 @@ body.is-fullscreen .help {
   <header>
     <div>
       <h1>Hattrick Sport</h1>
-      <div class="sub">Fullscreen con viewport 16:9</div>
+      <div class="sub">Fullscreen e autorizzazioni iframe</div>
     </div>
   </header>
 
@@ -218,7 +239,7 @@ body.is-fullscreen .help {
       type="url"
       autocomplete="url"
       spellcheck="false"
-      aria-label="URL Hattrick Sport"
+      aria-label="URL Hattrick Sport da incorporare"
       value="https://htsport.info/calcio.htm"
       required
     >
@@ -227,17 +248,23 @@ body.is-fullscreen .help {
 
   <main class="stage" id="stage">
 
+    <!-- Autorizzazioni fullscreen aggiornate -->
     <iframe
       id="siteFrame"
       title="Hattrick Sport"
       src="https://htsport.info/calcio.htm"
-      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-      allowfullscreen
+      allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
+      allowfullscreen="true"
+      webkitallowfullscreen="true"
+      mozallowfullscreen="true"
       referrerpolicy="strict-origin-when-cross-origin">
     </iframe>
 
     <div class="overlay" id="overlay">
-      <button type="button" class="fsbtn" id="fullscreenButton">
+      <button
+        type="button"
+        class="fsbtn"
+        id="fullscreenButton">
         ⛶ SCHERMO INTERO
       </button>
     </div>
@@ -251,7 +278,7 @@ body.is-fullscreen .help {
   </div>
 
   <p class="help">
-    In fullscreen il contenitore viene adattato al rapporto 16:9.
+    Il pulsante attiva il fullscreen del contenitore Hattrick.
     Il pulsante di uscita scompare dopo 3 secondi e ricompare
     interagendo con l'angolo superiore destro.
   </p>
@@ -260,12 +287,15 @@ body.is-fullscreen .help {
 
 <script>
 (() => {
+  'use strict';
+
   const form = document.getElementById('loadForm');
   const urlInput = document.getElementById('streamUrl');
   const frame = document.getElementById('siteFrame');
   const stage = document.getElementById('stage');
   const button = document.getElementById('fullscreenButton');
   const sensor = document.getElementById('sensor');
+  const overlay = document.getElementById('overlay');
   const status = document.getElementById('status');
 
   let hideTimer;
@@ -286,14 +316,32 @@ body.is-fullscreen .help {
     }
   }
 
+  function placeControls(geometry) {
+    overlay.style.top =
+      Math.max(6, geometry.top + 8) + 'px';
+
+    overlay.style.right =
+      Math.max(6, geometry.left + 8) + 'px';
+
+    sensor.style.top =
+      Math.max(0, geometry.top) + 'px';
+
+    sensor.style.right =
+      Math.max(0, geometry.left) + 'px';
+  }
+
   function showNormalButton() {
     clearTimeout(hideTimer);
     setButtonVisible(true);
 
     button.textContent = '⛶ SCHERMO INTERO';
+
     document.body.classList.remove('is-fullscreen');
 
     frame.style.cssText = '';
+
+    overlay.style.top = '10px';
+    overlay.style.right = '10px';
 
     sensor.style.top = '0px';
     sensor.style.right = '0px';
@@ -304,44 +352,8 @@ body.is-fullscreen .help {
 
     document.body.classList.add('is-fullscreen');
 
-    layoutVideoViewport();
     resetHideTimer();
   }
-
-  function layoutVideoViewport() {
-  if (!inFullscreen) return;
-
-  const vw = stage.clientWidth || window.innerWidth;
-  const vh = stage.clientHeight || window.innerHeight;
-
-  // Viewport di riferimento del player.
-  const baseW = 1280;
-  const baseH = 720;
-
-  // Adatta il video allo schermo senza deformarne le proporzioni.
-  const scale = Math.min(vw / baseW, vh / baseH);
-
-  Object.assign(frame.style, {
-    position: "absolute",
-    inset: "auto",
-    left: "50%",
-    top: "50%",
-    width: baseW + "px",
-    height: baseH + "px",
-    maxWidth: "none",
-    border: "0",
-    display: "block",
-    background: "#000",
-    transformOrigin: "center center",
-    transform: `translate(-50%, -50%) scale(${scale})`
-  });
-
-  button.style.top = "10px";
-  button.style.right = "10px";
-
-  sensor.style.top = "0";
-  sensor.style.right = "0";
-}
 
   async function enterFullscreen() {
     try {
@@ -350,7 +362,9 @@ body.is-fullscreen .help {
       } else if (stage.webkitRequestFullscreen) {
         stage.webkitRequestFullscreen();
       } else {
-        throw new Error('Fullscreen non supportato');
+        throw new Error(
+          'Fullscreen non supportato da questo browser'
+        );
       }
     } catch (err) {
       status.textContent =
@@ -362,12 +376,19 @@ body.is-fullscreen .help {
 
   async function exitFullscreen() {
     try {
-      if (document.fullscreenElement &&
-          document.exitFullscreen) {
+      if (
+        document.fullscreenElement &&
+        document.exitFullscreen
+      ) {
         await document.exitFullscreen();
-      } else if (document.webkitFullscreenElement &&
-                 document.webkitExitFullscreen) {
+      } else if (
+        document.webkitFullscreenElement &&
+        document.webkitExitFullscreen
+      ) {
         document.webkitExitFullscreen();
+      } else {
+        status.textContent =
+          'Il contenitore non risulta in fullscreen.';
       }
     } catch (err) {
       status.textContent =
@@ -397,9 +418,12 @@ body.is-fullscreen .help {
 
     if (inFullscreen) {
       showFullscreenButton();
-      status.textContent = 'Fullscreen attivo.';
+
+      status.textContent =
+        'Fullscreen attivo. Hattrick Sport rimane incorporato.';
     } else {
       showNormalButton();
+
       status.textContent = 'Fullscreen terminato.';
     }
   }
@@ -423,13 +447,13 @@ body.is-fullscreen .help {
 
   window.addEventListener('resize', () => {
     if (inFullscreen) {
-      requestAnimationFrame(layoutVideoViewport);
+      resetHideTimer();
     }
   });
 
   window.addEventListener('orientationchange', () => {
     if (inFullscreen) {
-      setTimeout(layoutVideoViewport, 180);
+      setTimeout(resetHideTimer, 180);
     }
   });
 
@@ -456,5 +480,6 @@ body.is-fullscreen .help {
   });
 })();
 </script>
+
 </body>
 </html>
