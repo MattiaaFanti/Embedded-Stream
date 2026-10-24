@@ -2,20 +2,17 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <title>Hattrick Sport — Embedded Stream</title>
+  <title>Embedded Stream</title>
 
   <style>
     * {
       box-sizing: border-box;
     }
 
-    html,
-    body {
+    html, body {
       width: 100%;
       height: 100%;
       margin: 0;
@@ -28,8 +25,8 @@
     #stage {
       position: fixed;
       inset: 0;
-      overflow: hidden;
       background: #000;
+      overflow: hidden;
     }
 
     #siteFrame {
@@ -42,53 +39,80 @@
 
     #playOverlay {
       position: absolute;
-      inset: 0;
+      top: 16px;
+      left: 16px;
       z-index: 999999;
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.30);
+      gap: 12px;
+      padding: 10px 15px 10px 10px;
+      border: 1px solid rgba(255,255,255,.8);
+      border-radius: 40px;
+      background: rgba(12, 15, 22, .94);
+      color: white;
+      box-shadow: 0 4px 18px rgba(0,0,0,.65);
       cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    #playButton {
+    #playIcon {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 88px;
-      height: 88px;
-      padding: 0 0 0 6px;
-      border: 3px solid #fff;
+      width: 48px;
+      height: 48px;
+      flex: 0 0 48px;
+      padding-left: 4px;
       border-radius: 50%;
-      background: rgba(15, 15, 15, 0.90);
+      background: #e53935;
       color: #fff;
-      font-size: 35px;
-      line-height: 1;
-      cursor: pointer;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, .65);
-      transition: transform .15s ease, background .15s ease;
+      font-size: 23px;
     }
 
-    #playButton:hover {
-      background: #222;
-      transform: scale(1.07);
+    #playText {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .3px;
     }
 
-    #playOverlay.hidden {
-      display: none;
+    #playOverlay:active {
+      transform: scale(.98);
     }
 
     #status {
       position: absolute;
-      left: 10px;
-      bottom: 10px;
-      z-index: 1000000;
-      padding: 6px 9px;
-      border-radius: 5px;
-      background: rgba(0, 0, 0, .7);
-      color: #ddd;
+      left: 12px;
+      bottom: 12px;
+      z-index: 999998;
+      max-width: calc(100% - 24px);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.75);
+      color: #fff;
       font-size: 12px;
       pointer-events: none;
+    }
+
+    #status.hidden {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      #playOverlay {
+        top: 12px;
+        left: 12px;
+      }
+
+      #playIcon {
+        width: 42px;
+        height: 42px;
+        flex-basis: 42px;
+      }
+
+      #playText {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -96,6 +120,8 @@
 <body>
   <main id="stage">
 
+    <!-- Hattrick viene caricato immediatamente, dietro al pulsante. -->
+    <!-- Il sandbox non concede popup o nuove schede. -->
     <iframe
       id="siteFrame"
       src="https://htsport.info/calcio.htm"
@@ -107,19 +133,13 @@
       referrerpolicy="strict-origin-when-cross-origin">
     </iframe>
 
-    <div id="playOverlay">
-      <button
-        id="playButton"
-        type="button"
-        aria-label="Avvia player">
-        ▶
-      </button>
-    </div>
+    <!-- Pulsante di primo accesso, sovrapposto in alto a sinistra. -->
+    <button id="playOverlay" type="button">
+      <span id="playIcon" aria-hidden="true">▶</span>
+      <span id="playText">AVVIA PLAYER</span>
+    </button>
 
-    <div id="status">
-      Premi Play per attivare il player
-    </div>
-
+    <div id="status">Caricamento del player in corso…</div>
   </main>
 
   <script>
@@ -128,20 +148,24 @@
 
       const frame = document.getElementById("siteFrame");
       const overlay = document.getElementById("playOverlay");
-      const button = document.getElementById("playButton");
       const status = document.getElementById("status");
 
-      function activatePlayer(event) {
+      let loaded = false;
+
+      frame.addEventListener("load", () => {
+        loaded = true;
+        status.textContent = "Player caricato. Premi AVVIA PLAYER.";
+      });
+
+      overlay.addEventListener("click", event => {
         event.preventDefault();
         event.stopPropagation();
 
-        // Il clic resta sulla nostra pagina:
-        // non viene inoltrato al sito incorporato.
-        overlay.classList.add("hidden");
+        // Nasconde il nostro pulsante: il clic non viene
+        // inoltrato al documento incorporato.
+        overlay.remove();
 
-        // Tentativo di assegnare il focus all'iframe.
-        frame.setAttribute("tabindex", "0");
-
+        // Richiede il focus dell'iframe Hattrick.
         try {
           frame.focus({ preventScroll: true });
         } catch (_) {
@@ -152,14 +176,12 @@
           frame.contentWindow.focus();
         } catch (_) {}
 
-        status.textContent =
-          "Player attivato. Le finestre pubblicitarie sono bloccate.";
+        status.textContent = loaded
+          ? "Player pronto. Ora interagisci direttamente con il video."
+          : "Focus richiesto. Il player sta ancora caricando.";
 
-        console.log("Play overlay rimosso; focus richiesto a Hattrick.");
-      }
-
-      button.addEventListener("click", activatePlayer);
-      overlay.addEventListener("click", activatePlayer);
+        console.log("Overlay rimosso; focus richiesto all'iframe.");
+      });
     })();
   </script>
 </body>
