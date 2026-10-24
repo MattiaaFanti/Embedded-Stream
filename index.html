@@ -8,7 +8,9 @@
   <title>Hattrick Sport — Fullscreen Pass-through</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     html, body {
       width: 100%;
@@ -37,7 +39,6 @@
       background: #000;
     }
 
-    /* Barra strumenti, separata dal punto di clic. */
     #toolbar {
       position: fixed;
       z-index: 2147483647;
@@ -85,21 +86,17 @@
       pointer-events: none;
     }
 
-    /*
-      Questo elemento si può trascinare solo in modalità
-      calibrazione. In modalità pass-through non intercetta
-      il clic: il browser colpisce il contenuto sottostante.
-    */
     #target {
       position: fixed;
       z-index: 2147483646;
-      left: calc(50vw - 30px);
-      top: calc(50vh - 25px);
+      left: 50%;
+      top: 50%;
       width: 60px;
       height: 50px;
       display: flex;
       align-items: center;
       justify-content: center;
+      transform: translate(-50%, -50%);
       border: 2px dashed #fff;
       border-radius: 8px;
       color: #fff;
@@ -132,11 +129,12 @@
       left: 50%;
       bottom: 48px;
       transform: translateX(-50%);
+      width: max-content;
       max-width: calc(100vw - 24px);
       padding: 7px 10px;
       border-radius: 6px;
       background: rgba(0,0,0,.8);
-      color: white;
+      color: #fff;
       font-size: 12px;
       text-align: center;
       pointer-events: none;
@@ -148,6 +146,7 @@
         right: 6px;
         left: 6px;
         justify-content: center;
+        max-width: none;
       }
 
       #toolbar button {
@@ -171,23 +170,26 @@
 
   <div id="toolbar">
     <button id="modeButton" class="primary">
-      1. BLOCCA POSIZIONE
+      MODIFICA POSIZIONE
     </button>
     <button id="resetButton">
-      RIPOSIZIONA
+      CENTRA
+    </button>
+    <button id="copyButton">
+      COPIA LINK PER MOBILE
     </button>
   </div>
 
-  <div id="target" class="editing" aria-label="Punto fullscreen">
+  <div id="target" class="passthrough" aria-label="Bersaglio fullscreen">
     ⛶
   </div>
 
   <div id="targetLabel">
-    CALIBRAZIONE: trascina ⛶ sopra il vero pulsante fullscreen del video
+    Clic-through attivo: il simbolo non intercetta il clic
   </div>
 
   <div id="status">
-    Il bersaglio intercetta i tocchi durante la calibrazione.
+    Posizione caricata.
   </div>
 
   <script>
@@ -197,49 +199,151 @@
       const target = document.getElementById("target");
       const modeButton = document.getElementById("modeButton");
       const resetButton = document.getElementById("resetButton");
+      const copyButton = document.getElementById("copyButton");
       const status = document.getElementById("status");
       const label = document.getElementById("targetLabel");
 
-      const STORAGE_KEY = "hattrick-fullscreen-target-v1";
+      const STORAGE_KEY = "hattrick-fullscreen-target-ratio-v2";
 
-      let editing = true;
+      let editing = false;
       let dragging = false;
-      let pointerOffsetX = 0;
-      let pointerOffsetY = 0;
+      let offsetX = 0;
+      let offsetY = 0;
 
-      function savePosition() {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            left: target.offsetLeft,
-            top: target.offsetTop
-          }));
-        } catch (_) {}
+      let savedRatio = {
+        x: 0.5,
+        y: 0.5
+      };
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(value, max));
       }
 
-      function restorePosition() {
-        try {
-          const saved = JSON.parse(
-            localStorage.getItem(STORAGE_KEY) || "null"
-          );
-
-          if (!saved) return;
-
-          if (Number.isFinite(saved.left) &&
-              Number.isFinite(saved.top)) {
-            setPosition(saved.left, saved.top);
-          }
-        } catch (_) {}
+      function getMaxPosition() {
+        return {
+          x: Math.max(0, window.innerWidth - target.offsetWidth),
+          y: Math.max(0, window.innerHeight - target.offsetHeight)
+        };
       }
 
       function setPosition(left, top) {
-        const maxLeft = Math.max(0, window.innerWidth - target.offsetWidth);
-        const maxTop = Math.max(0, window.innerHeight - target.offsetHeight);
+        const max = getMaxPosition();
 
-        target.style.left =
-          Math.max(0, Math.min(left, maxLeft)) + "px";
+        const x = clamp(left, 0, max.x);
+        const y = clamp(top, 0, max.y);
 
-        target.style.top =
-          Math.max(0, Math.min(top, maxTop)) + "px";
+        target.style.left = x + "px";
+        target.style.top = y + "px";
+        target.style.transform = "none";
+      }
+
+      function applyRatio(ratio) {
+        const max = getMaxPosition();
+
+        setPosition(
+          clamp(ratio.x, 0, 1) * max.x,
+          clamp(ratio.y, 0, 1) * max.y
+        );
+      }
+
+      function readRatioFromURL() {
+        const match = location.hash.match(
+          /^#target=([0-9]*\.?[0-9]+),([0-9]*\.?[0-9]+)$/
+        );
+
+        if (!match) return null;
+
+        const x = Number(match[1]);
+        const y = Number(match[2]);
+
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          return null;
+        }
+
+        if (x < 0 || x > 1 || y < 0 || y > 1) {
+          return null;
+        }
+
+        return { x, y };
+      }
+
+      function updateShareableURL(ratio) {
+        const x = clamp(ratio.x, 0, 1).toFixed(4);
+        const y = clamp(ratio.y, 0, 1).toFixed(4);
+
+        const newURL =
+          location.pathname +
+          location.search +
+          "#target=" + x + "," + y;
+
+        history.replaceState(null, "", newURL);
+      }
+
+      function savePosition() {
+        const max = getMaxPosition();
+
+        const left = parseFloat(target.style.left) || 0;
+        const top = parseFloat(target.style.top) || 0;
+
+        savedRatio = {
+          x: max.x > 0 ? clamp(left / max.x, 0, 1) : 0.5,
+          y: max.y > 0 ? clamp(top / max.y, 0, 1) : 0.5
+        };
+
+        try {
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(savedRatio)
+          );
+        } catch (_) {}
+
+        updateShareableURL(savedRatio);
+
+        status.textContent =
+          "Posizione salvata: X " +
+          Math.round(savedRatio.x * 100) + "%, Y " +
+          Math.round(savedRatio.y * 100) + "%.";
+      }
+
+      function loadPosition() {
+        // Prima priorità: coordinate condivise nel link.
+        const fromURL = readRatioFromURL();
+
+        if (fromURL) {
+          savedRatio = fromURL;
+          applyRatio(savedRatio);
+
+          try {
+            localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify(savedRatio)
+            );
+          } catch (_) {}
+
+          status.textContent =
+            "Posizione caricata dal link condivisibile.";
+
+          return;
+        }
+
+        // Seconda priorità: posizione salvata su questo dispositivo.
+        try {
+          const stored = JSON.parse(
+            localStorage.getItem(STORAGE_KEY) || "null"
+          );
+
+          if (
+            stored &&
+            Number.isFinite(stored.x) &&
+            Number.isFinite(stored.y)
+          ) {
+            savedRatio = stored;
+          }
+        } catch (_) {}
+
+        applyRatio(savedRatio);
+        status.textContent =
+          "Posizione caricata dalle coordinate disponibili.";
       }
 
       function setMode(passThrough) {
@@ -249,18 +353,20 @@
         target.classList.toggle("passthrough", passThrough);
 
         modeButton.textContent = editing
-          ? "1. BLOCCA POSIZIONE"
+          ? "BLOCCA POSIZIONE"
           : "MODIFICA POSIZIONE";
 
         label.textContent = editing
-          ? "CALIBRAZIONE: trascina ⛶ sopra il vero pulsante fullscreen"
-          : "CLICK-THROUGH ATTIVO: clicca sul simbolo ⛶ per raggiungere il player sottostante";
+          ? "TRASCINA IL SIMBOLO SOPRA IL PULSANTE FULLSCREEN"
+          : "CLIC-THROUGH ATTIVO: il clic raggiunge il player sottostante";
 
         status.textContent = editing
-          ? "Modalità calibrazione: puoi trascinare il bersaglio."
-          : "Il bersaglio non intercetta più i clic. Prova a cliccare sopra ⛶.";
+          ? "Modalità modifica: trascina il bersaglio."
+          : "Modalità clic-through attiva.";
 
-        savePosition();
+        if (passThrough) {
+          savePosition();
+        }
       }
 
       target.addEventListener("pointerdown", event => {
@@ -270,8 +376,8 @@
 
         const rect = target.getBoundingClientRect();
 
-        pointerOffsetX = event.clientX - rect.left;
-        pointerOffsetY = event.clientY - rect.top;
+        offsetX = event.clientX - rect.left;
+        offsetY = event.clientY - rect.top;
 
         target.setPointerCapture(event.pointerId);
         event.preventDefault();
@@ -281,8 +387,8 @@
         if (!editing || !dragging) return;
 
         setPosition(
-          event.clientX - pointerOffsetX,
-          event.clientY - pointerOffsetY
+          event.clientX - offsetX,
+          event.clientY - offsetY
         );
       });
 
@@ -302,21 +408,39 @@
       });
 
       resetButton.addEventListener("click", () => {
-        setPosition(
-          window.innerWidth / 2 - target.offsetWidth / 2,
-          window.innerHeight / 2 - target.offsetHeight / 2
-        );
+        const max = getMaxPosition();
+
+        setPosition(max.x / 2, max.y / 2);
         savePosition();
-        setMode(false);
+        setMode(true);
+      });
+
+      copyButton.addEventListener("click", async () => {
+        savePosition();
+
+        const link = location.href;
+
+        try {
+          await navigator.clipboard.writeText(link);
+          status.textContent =
+            "Link copiato. Aprilo sul telefono per mantenere la posizione.";
+        } catch (_) {
+          window.prompt(
+            "Copia questo link e aprilo sul telefono:",
+            link
+          );
+        }
       });
 
       window.addEventListener("resize", () => {
-        setPosition(target.offsetLeft, target.offsetTop);
-        savePosition();
+        applyRatio(savedRatio);
       });
 
-      restorePosition();
-      setMode(false);
+      // Carica le coordinate al primo avvio.
+      loadPosition();
+
+      // Inizia in modalità clic-through, come la versione funzionante.
+      setMode(true);
     })();
   </script>
 </body>
