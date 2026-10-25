@@ -1,258 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover"
+    >
+    <meta name="theme-color" content="#000000">
 
- // ==UserScript==
- // @name         Hattrick - Fullscreen Player
- // @namespace    mattia.hattrick
- // @version      1.0.0
- // @description  Aggiunge automaticamente i controlli fullscreen al player Hattrick
- // @match        https://htsport.info/*
- // @match        https://www.htsport.info/*
- // @run-at       document-idle
- // @grant        none
- // ==/UserScript==
+    <title>Embedded Stream</title>
 
- (() => {
-     'use strict';
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-     let installed = false;
-     let active = false;
-     let playerFrame = null;
-     let playerParent = null;
-     let enterButton = null;
-     let baseParentStyle = null;
-     let originalFrameStyle = null;
-     let originalAllow = null;
-     let originalAllowFullscreen = false;
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
 
-     function scanFrames(root = document) {
-         const result = [...root.querySelectorAll('iframe, frame')];
+        body {
+            display: flex;
+            min-height: 100vh;
+            min-height: 100dvh;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+        }
 
-         for (const element of root.querySelectorAll('*')) {
-             if (element.shadowRoot) {
-                 result.push(...scanFrames(element.shadowRoot));
-             }
-         }
+        a {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 14px 20px;
+            border-radius: 8px;
+            background: #1769ff;
+            color: #fff;
+            font-weight: bold;
+            text-decoration: none;
+        }
+    </style>
+</head>
 
-         return result;
-     }
+<body>
+    <main>
+        <p>Connessione al player in corso…</p>
 
-     function findPlayerFrame() {
-         const frames = scanFrames();
+        <a href="https://hattrick-player-control.yaboyo95.workers.dev/">
+            APRI HATTRICK
+        </a>
 
-         const directMatch = frames.find(frame =>
-             /daddyliveplayer\.st|gomstream\.php/i.test(frame.src || '')
-         );
+        <noscript>
+            <p>JavaScript è disattivato. Tocca il pulsante per continuare.</p>
+        </noscript>
+    </main>
 
-         if (directMatch) return directMatch;
+    <script>
+        (() => {
+            const WORKER_URL =
+                "https://hattrick-player-control.yaboyo95.workers.dev/";
 
-         return frames
-             .filter(frame => {
-                 const rect = frame.getBoundingClientRect();
-                 return rect.width > 200 && rect.height > 100;
-             })
-             .sort((a, b) => {
-                 const ra = a.getBoundingClientRect();
-                 const rb = b.getBoundingClientRect();
-
-                 return (rb.width * rb.height) -
-                        (ra.width * ra.height);
-             })[0] || null;
-     }
-
-     function restoreLayout() {
-         if (!playerParent || !playerFrame) return;
-
-         playerParent.removeAttribute('data-hattrick-fullscreen');
-
-         if (baseParentStyle === null) {
-             playerParent.removeAttribute('style');
-         } else {
-             playerParent.setAttribute('style', baseParentStyle);
-         }
-
-         if (originalFrameStyle === null) {
-             playerFrame.removeAttribute('style');
-         } else {
-             playerFrame.setAttribute('style', originalFrameStyle);
-         }
-
-         if (originalAllow === null) {
-             playerFrame.removeAttribute('allow');
-         } else {
-             playerFrame.setAttribute('allow', originalAllow);
-         }
-
-         if (originalAllowFullscreen) {
-             playerFrame.setAttribute('allowfullscreen', '');
-         } else {
-             playerFrame.removeAttribute('allowfullscreen');
-         }
-     }
-
-     function exitFullscreen() {
-         const exit = document.exitFullscreen ||
-                      document.webkitExitFullscreen;
-
-         if (exit) {
-             const result = exit.call(document);
-
-             if (result && typeof result.catch === 'function') {
-                 result.catch(console.warn);
-             }
-         }
-     }
-
-     function enterFullscreen() {
-         if (!playerFrame || !playerParent) return;
-
-         const request = playerParent.requestFullscreen ||
-                         playerParent.webkitRequestFullscreen;
-
-         if (!request) {
-             alert('Questo browser non supporta il fullscreen di questo contenitore.');
-             return;
-         }
-
-         playerParent.style.position = 'fixed';
-         playerParent.style.top = '0';
-         playerParent.style.left = '0';
-         playerParent.style.width = '100vw';
-         playerParent.style.height = '100vh';
-         playerParent.style.height = '100dvh';
-         playerParent.style.margin = '0';
-         playerParent.style.padding = '0';
-         playerParent.style.overflow = 'hidden';
-         playerParent.style.background = '#000';
-         playerParent.style.zIndex = '2147483000';
-
-         playerFrame.style.width = '100%';
-         playerFrame.style.height = '100%';
-         playerFrame.style.display = 'block';
-         playerFrame.style.border = '0';
-
-         playerFrame.setAttribute('allowfullscreen', '');
-
-         const allow = (originalAllow || '')
-             .split(';')
-             .map(value => value.trim())
-             .filter(Boolean);
-
-         if (!allow.some(value => value === 'fullscreen')) {
-             allow.push('fullscreen');
-         }
-
-         playerFrame.setAttribute('allow', allow.join('; '));
-
-         try {
-             const result = request.call(playerParent);
-
-             if (result && typeof result.catch === 'function') {
-                 result.catch(error => {
-                     restoreLayout();
-                     alert(
-                         'Fullscreen non riuscito: ' +
-                         error.name + ' — ' + error.message
-                     );
-                 });
-             }
-         } catch (error) {
-             restoreLayout();
-             alert(
-                 'Fullscreen non riuscito: ' +
-                 error.name + ' — ' + error.message
-             );
-         }
-     }
-
-     function onFullscreenChange() {
-         const currentFullscreen =
-             document.fullscreenElement ||
-             document.webkitFullscreenElement;
-
-         if (currentFullscreen === playerParent) {
-             active = true;
-             enterButton.textContent = '✕ ESCI FULLSCREEN';
-         } else if (active) {
-             active = false;
-             restoreLayout();
-             enterButton.textContent = '⛶ ENTRA FULLSCREEN';
-         }
-     }
-
-     function install(frame) {
-         if (installed || !frame || !frame.parentElement) return;
-
-         playerFrame = frame;
-         playerParent = frame.parentElement;
-
-         originalFrameStyle = frame.getAttribute('style');
-         originalAllow = frame.getAttribute('allow');
-         originalAllowFullscreen = frame.hasAttribute('allowfullscreen');
-
-         if (getComputedStyle(playerParent).position === 'static') {
-             playerParent.style.position = 'relative';
-         }
-
-         baseParentStyle = playerParent.getAttribute('style');
-
-         enterButton = document.createElement('button');
-         enterButton.type = 'button';
-         enterButton.textContent = '⛶ ENTRA FULLSCREEN';
-
-         Object.assign(enterButton.style, {
-             position: 'absolute',
-             top: '12px',
-             right: '12px',
-             zIndex: '2147483647',
-             padding: '12px 16px',
-             background: '#111',
-             color: '#fff',
-             border: '2px solid #fff',
-             borderRadius: '6px',
-             font: 'bold 13px Arial, sans-serif',
-             cursor: 'pointer',
-             opacity: '1',
-             pointerEvents: 'auto'
-         });
-
-         enterButton.addEventListener('click', event => {
-             event.preventDefault();
-             event.stopPropagation();
-
-             if (active) {
-                 exitFullscreen();
-             } else {
-                 enterFullscreen();
-             }
-         });
-
-         playerParent.appendChild(enterButton);
-
-         document.addEventListener(
-             'fullscreenchange',
-             onFullscreenChange
-         );
-
-         document.addEventListener(
-             'webkitfullscreenchange',
-             onFullscreenChange
-         );
-
-         installed = true;
-     }
-
-     let attempts = 0;
-
-     const timer = setInterval(() => {
-         if (installed || attempts++ >= 120) {
-             clearInterval(timer);
-             return;
-         }
-
-         const frame = findPlayerFrame();
-
-         if (frame) {
-             install(frame);
-             clearInterval(timer);
-         }
-     }, 500);
- })();
+            window.location.replace(WORKER_URL);
+        })();
+    </script>
+</body>
+</html>
