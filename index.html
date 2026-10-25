@@ -2,14 +2,11 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1, viewport-fit=cover"
     >
-
     <meta name="theme-color" content="#000000">
-
     <title>Embedded Stream</title>
 
     <style>
@@ -19,42 +16,58 @@
 
         html,
         body {
-            position: fixed;
-            inset: 0;
             width: 100%;
-            height: 100%;
-            height: 100dvh;
+            min-height: 100%;
             margin: 0;
-            padding: 0;
-            overflow: hidden;
             background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
         }
 
-        #playerFrame {
-            position: fixed;
-            inset: 0;
-            display: block;
-            width: 100%;
-            height: 100%;
-            height: 100dvh;
-            margin: 0;
-            padding: 0;
-            border: 0;
-            background: #000;
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 24px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 420px;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 14px 22px;
+            color: #fff;
+            background: #1769ff;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
         }
     </style>
 </head>
 
 <body>
-    <iframe
-        id="playerFrame"
-        src="https://daddyliveplayer.st/premiumtv/gomstream.php?id=870"
-        title="Video player"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        allowfullscreen
-        webkitallowfullscreen
-        scrolling="no"
-        referrerpolicy="no-referrer-when-downgrade">
-    </iframe>
+    <main>
+        <p>Connessione al player Hattrick…</p>
+
+        <a href="https://htsport.info/calcio.htm" id="openPlayer">
+            APRI HATTRICK
+        </a>
+    </main>
+
+    <script>
+        (() => {
+            const target = "https://htsport.info/calcio.htm";
+
+            // Apre Hattrick come pagina principale,
+            // senza incorporarlo in un ulteriore iframe.
+            window.location.replace(target);
+        })();
+    </script>
 </body>
 </html>
