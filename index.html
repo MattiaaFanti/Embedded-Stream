@@ -6,10 +6,6 @@
   <meta name="theme-color" content="#000000">
   <title>Hattrick Sport — Player Focus</title>
 
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-
   <style>
     * {
       box-sizing: border-box;
@@ -22,13 +18,15 @@
       height: 100%;
       overflow: hidden;
       background: #000;
-      color: #fff;
       font-family: Arial, sans-serif;
     }
 
     #stage {
       position: fixed;
-      inset: 0;
+      top: 25%;
+      left: 0;
+      width: 100%;
+      height: 50%;
       background: #000;
       overflow: hidden;
     }
@@ -43,22 +41,16 @@
       background: #000;
     }
 
-    #playButton {
+    #focusButton {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 2147483647;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      min-width: 190px;
-      min-height: 76px;
       padding: 16px 24px;
       border: 2px solid #fff;
-      border-radius: 14px;
-      background: rgba(15, 20, 30, .97);
+      border-radius: 10px;
+      background: rgba(15, 20, 30, .96);
       color: #fff;
       font-size: 16px;
       font-weight: 700;
@@ -67,81 +59,89 @@
       touch-action: manipulation;
     }
 
-    #playButton.visible {
-      display: flex;
+    #focusButton:active {
+      background: #245bc7;
+      transform: translate(-50%, -50%) scale(.97);
     }
 
-    #playIcon {
-      font-size: 30px;
-      line-height: 1;
+    #focusButton:disabled {
+      opacity: .7;
+      cursor: wait;
     }
 
     #status {
-      position: absolute;
+      position: fixed;
       left: 12px;
-      right: 12px;
-      bottom: max(12px, env(safe-area-inset-bottom));
+      bottom: 12px;
       z-index: 2147483646;
-      width: fit-content;
       max-width: calc(100% - 24px);
-      margin: 0 auto;
-      padding: 8px 12px;
-      border-radius: 7px;
-      background: rgba(0, 0, 0, .84);
+      padding: 8px 11px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, .8);
       color: #fff;
       font-size: 12px;
-      line-height: 1.45;
-      text-align: center;
+      line-height: 1.4;
       pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      #focusButton {
+        padding: 14px 20px;
+        font-size: 14px;
+      }
     }
   </style>
 </head>
 
 <body>
   <main id="stage">
+
     <iframe
       id="siteFrame"
       src="https://htsport.info/calcio.htm"
       title="Hattrick Sport"
       tabindex="0"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
-      allowfullscreen
-      referrerpolicy="strict-origin-when-cross-origin">
+      allowfullscreen>
     </iframe>
 
-    <button id="playButton" type="button">
-      <span id="playIcon" aria-hidden="true">▶</span>
-      <span id="playText">AVVIA PLAYER</span>
+    <button id="focusButton" type="button">
+      FOCUS PLAYER
     </button>
 
-    <div id="status" role="status" aria-live="polite">
-      Caricamento e ricerca dei frame…
-    </div>
   </main>
+
+  <div id="status" role="status" aria-live="polite">
+    Hattrick Sport in caricamento.
+  </div>
 
   <script>
     (() => {
       "use strict";
 
       const frame = document.getElementById("siteFrame");
-      const button = document.getElementById("playButton");
-      const playText = document.getElementById("playText");
+      const button = document.getElementById("focusButton");
       const status = document.getElementById("status");
 
       const sleep = ms =>
         new Promise(resolve => setTimeout(resolve, ms));
 
-      let contexts = [];
-      let searching = false;
-      let activated = false;
+      function requestWindowFocus(win) {
+        try {
+          win.focus();
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
 
       function collectFrames() {
-        const result = [];
+        const collected = [];
         const visited = new Set();
 
         function visit(win, path) {
           if (!win || visited.has(win)) return;
+
           visited.add(win);
 
           let count = 0;
@@ -149,7 +149,7 @@
           try {
             count = win.length;
           } catch (error) {
-            result.push({
+            collected.push({
               win,
               path,
               children: null,
@@ -158,7 +158,7 @@
             return;
           }
 
-          result.push({
+          collected.push({
             win,
             path,
             children: count,
@@ -181,72 +181,19 @@
         try {
           visit(frame.contentWindow, ["siteFrame"]);
         } catch (error) {
-          console.warn("Frame Hattrick non accessibile:", error);
-        }
-
-        return result;
-      }
-
-      function requestFocus(win) {
-        try {
-          win.focus();
-          return true;
-        } catch (_) {
-          return false;
-        }
-      }
-
-      function sendSyntheticF(context) {
-        const win = context.win;
-
-        try {
-          const doc = win.document;
-
-          const target =
-            doc.activeElement &&
-            doc.activeElement !== doc.body
-              ? doc.activeElement
-              : doc;
-
-          const options = {
-            key: "f",
-            code: "KeyF",
-            keyCode: 70,
-            which: 70,
-            bubbles: true,
-            cancelable: true,
-            composed: true
-          };
-
-          target.dispatchEvent(
-            new win.KeyboardEvent("keydown", options)
+          console.warn(
+            "Impossibile accedere al frame Hattrick:",
+            error
           );
-
-          setTimeout(() => {
-            try {
-              target.dispatchEvent(
-                new win.KeyboardEvent("keyup", options)
-              );
-            } catch (_) {}
-          }, 50);
-
-          return {
-            path: context.path.join(" → "),
-            result: "Evento sintetico inviato"
-          };
-        } catch (error) {
-          return {
-            path: context.path.join(" → "),
-            result: "Bloccato dal browser: " + error.name
-          };
         }
+
+        return collected;
       }
 
-      async function searchPlayer() {
-        if (searching) return;
-        searching = true;
-
-        status.textContent = "Ricerca dei frame in corso…";
+      async function focusPlayer() {
+        button.disabled = true;
+        button.textContent = "RICERCA PLAYER…";
+        status.textContent = "Richiesta del focus in corso…";
 
         try {
           frame.focus({ preventScroll: true });
@@ -254,88 +201,66 @@
           frame.focus();
         }
 
-        requestFocus(frame.contentWindow);
+        requestWindowFocus(frame.contentWindow);
 
-        await sleep(500);
-        contexts = collectFrames();
+        await sleep(300);
+
+        let contexts = collectFrames();
 
         if (contexts.length <= 1) {
-          await sleep(900);
+          await sleep(700);
           contexts = collectFrames();
         }
 
         contexts.sort((a, b) => a.path.length - b.path.length);
+
+        let successfulAttempts = 0;
+
+        for (const context of contexts) {
+          if (requestWindowFocus(context.win)) {
+            successfulAttempts++;
+          }
+
+          await sleep(100);
+        }
+
+        if (contexts.length > 0) {
+          const deepest = contexts[contexts.length - 1];
+          requestWindowFocus(deepest.win);
+        }
 
         console.table(
           contexts.map(context => ({
             percorso: context.path.join(" → "),
             profondità: context.path.length,
             sottoframe: context.children,
-            DOMAccessibile: context.readable
+            contestoLeggibile: context.readable
           }))
         );
 
-        button.classList.add("visible");
-        status.textContent =
-          "Ricerca completata: " + contexts.length +
-          " contesti trovati. Premi AVVIA PLAYER.";
-
-        searching = false;
-      }
-
-      function playClick() {
-        if (activated) return;
-        activated = true;
-
-        button.disabled = true;
-        playText.textContent = "ATTIVAZIONE…";
-        status.textContent = "Richiesta del focus e tentativo F…";
-
-        // Prova a focalizzare tutti i contesti trovati in precedenza.
-        for (const context of contexts) {
-          requestFocus(context.win);
-        }
-
-        // I contesti più profondi vengono tentati per primi.
-        const deepestFirst = [...contexts].sort(
-          (a, b) => b.path.length - a.path.length
-        );
-
-        const results = deepestFirst.map(sendSyntheticF);
-        console.table(results);
-
-        button.classList.remove("visible");
-
-        status.textContent =
-          "Tentativo completato. Gli eventi sintetici F possono essere rifiutati dal browser.";
-
         console.log({
-          contextsFound: contexts.length,
-          results,
-          userActivation: navigator.userActivation?.isActive
+          contestiIndividuati: contexts.length,
+          tentativiFocusRiusciti: successfulAttempts,
+          pagina: location.href,
+          elementoAttivo: document.activeElement?.tagName,
+          iframeAttivo: document.activeElement === frame
         });
+
+        status.textContent = contexts.length <= 1
+          ? "Focus richiesto. Ora prova a premere F."
+          : "Tentativi completati su " + contexts.length +
+            " contesti. Ora prova a premere F.";
+
+        button.textContent = "FOCUS RICHIESTO";
+        button.disabled = false;
       }
 
-      button.addEventListener("click", playClick);
+      button.addEventListener("click", focusPlayer);
 
       frame.addEventListener("load", () => {
-        status.textContent = "Hattrick caricato. Ricerca dei frame…";
-        searchPlayer();
+        status.textContent =
+          "Hattrick caricato. Premi FOCUS PLAYER per tentare il focus interno.";
       });
-
-      // Gestisce anche il caso in cui il frame abbia già terminato
-      // il caricamento prima dell'installazione del listener.
-      window.addEventListener("load", () => {
-        if (!contexts.length) searchPlayer();
-      });
-
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("./sw.js", { scope: "./" })
-            .catch(error => console.warn("Service worker:", error));
-        });
-      }
     })();
   </script>
 </body>
