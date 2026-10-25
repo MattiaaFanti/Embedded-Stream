@@ -2,12 +2,10 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <meta name="description" content="Hattrick Sport in un'interfaccia adattiva.">
-
-  <title>Hattrick Stream</title>
+  <meta name="description" content="Hattrick Sport Player">
+  <title>Hattrick Sport — Player Focus</title>
 
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
@@ -19,187 +17,141 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #000;
-      --panel: rgba(15, 19, 28, .94);
-      --border: rgba(255, 255, 255, .22);
-    }
-
     * {
       box-sizing: border-box;
     }
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
+    html, body {
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background: #000;
       color: #fff;
-      font-family: system-ui, Arial, sans-serif;
+      font-family: Arial, sans-serif;
     }
 
-    #app {
+    #stage {
       position: fixed;
       inset: 0;
-      width: 100%;
-      height: 100%;
-      height: 100dvh;
-      overflow: hidden;
       background: #000;
-      isolation: isolate;
+      overflow: hidden;
     }
 
-    /*
-      La pagina Hattrick viene visualizzata dentro un viewport
-      di riferimento 1280x720. JavaScript ridimensiona l'intero
-      viewport per adattarlo alla finestra senza deformarlo.
-    */
     #siteFrame {
       position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 1280px;
-      height: 720px;
+      inset: 0;
       display: block;
-      margin: 0;
-      padding: 0;
+      width: 100%;
+      height: 100%;
       border: 0;
       background: #000;
-      transform: translate(-50%, -50%) scale(1);
-      transform-origin: center center;
     }
 
-    #controls {
+    #playButton {
       position: absolute;
-      z-index: 1000;
-      top: max(10px, env(safe-area-inset-top));
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, -50%);
+      z-index: 2147483647;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
-      max-width: calc(100% - 20px);
-      padding: 7px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--panel);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, .4);
-    }
-
-    .control {
-      min-height: 42px;
-      padding: 10px 14px;
-      border: 1px solid rgba(255, 255, 255, .18);
-      border-radius: 8px;
-      background: #253044;
+      gap: 12px;
+      min-width: 190px;
+      min-height: 76px;
+      padding: 16px 24px;
+      border: 2px solid #fff;
+      border-radius: 14px;
+      background: rgba(15, 20, 30, .97);
       color: #fff;
-      font-size: 13px;
+      font-size: 16px;
       font-weight: 700;
-      white-space: nowrap;
       cursor: pointer;
+      box-shadow: 0 3px 24px rgba(0, 0, 0, .65);
       touch-action: manipulation;
     }
 
-    .control:active {
-      background: #3a4d6a;
+    #playIcon {
+      font-size: 30px;
+      line-height: 1;
+      color: #fff;
     }
 
-    #installButton[hidden] {
-      display: none;
+    #playButton:active {
+      background: #245bc7;
+      transform: translate(-50%, -50%) scale(.97);
+    }
+
+    #playButton:disabled {
+      opacity: .8;
+      cursor: wait;
     }
 
     #status {
       position: absolute;
-      z-index: 1000;
-      left: 50%;
-      bottom: max(10px, env(safe-area-inset-bottom));
-      transform: translateX(-50%);
-      width: max-content;
-      max-width: calc(100% - 20px);
+      left: 12px;
+      right: 12px;
+      bottom: max(12px, env(safe-area-inset-bottom));
+      z-index: 2147483646;
+      width: fit-content;
+      max-width: calc(100% - 24px);
+      margin: 0 auto;
       padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--panel);
-      color: #eee;
+      border-radius: 7px;
+      background: rgba(0, 0, 0, .84);
+      color: #fff;
       font-size: 12px;
-      line-height: 1.4;
+      line-height: 1.45;
       text-align: center;
       pointer-events: none;
     }
 
-    #app:fullscreen,
-    #app:-webkit-full-screen {
+    #status.hidden {
+      display: none;
+    }
+
+    #playButton.hidden {
+      display: none;
+    }
+
+    #stage:fullscreen,
+    #stage:-webkit-full-screen {
       position: fixed;
       inset: 0;
       width: 100vw;
       height: 100vh;
       height: 100dvh;
+      border: 0;
+      border-radius: 0;
       background: #000;
-    }
-
-    #app.css-fullscreen {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
-      background: #000;
-    }
-
-    #app:fullscreen #controls,
-    #app:-webkit-full-screen #controls,
-    #app.css-fullscreen #controls {
-      top: max(8px, env(safe-area-inset-top));
-    }
-
-    @media (max-width: 480px) {
-      #controls {
-        gap: 5px;
-        padding: 5px;
-      }
-
-      .control {
-        min-height: 40px;
-        padding: 9px 10px;
-        font-size: 12px;
-      }
     }
   </style>
 </head>
 
 <body>
-  <main id="app">
+  <main id="stage">
 
     <iframe
       id="siteFrame"
-      title="Hattrick Sport"
       src="https://htsport.info/calcio.htm"
+      title="Hattrick Sport"
 
       sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
 
-      allow="fullscreen *; autoplay *; encrypted-media *; picture-in-picture *"
+      allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
       allowfullscreen
-
       referrerpolicy="strict-origin-when-cross-origin">
     </iframe>
 
-    <nav id="controls" aria-label="Controlli">
-      <button id="fullscreenButton" class="control" type="button">
-        ⛶ Schermo intero
-      </button>
-
-      <button id="installButton" class="control" type="button" hidden>
-        Installa
-      </button>
-    </nav>
+    <button id="playButton" type="button">
+      <span id="playIcon" aria-hidden="true">▶</span>
+      <span id="playText">AVVIA PLAYER</span>
+    </button>
 
     <div id="status" role="status" aria-live="polite">
-      Adattamento del player in corso…
+      Caricamento di Hattrick Sport…
     </div>
 
   </main>
@@ -208,214 +160,266 @@
     (() => {
       "use strict";
 
-      const app = document.getElementById("app");
       const frame = document.getElementById("siteFrame");
-      const fullscreenButton = document.getElementById("fullscreenButton");
-      const installButton = document.getElementById("installButton");
+      const button = document.getElementById("playButton");
+      const buttonText = document.getElementById("playText");
       const status = document.getElementById("status");
 
-      const BASE_WIDTH = 1280;
-      const BASE_HEIGHT = 720;
+      const sleep = ms =>
+        new Promise(resolve => setTimeout(resolve, ms));
 
-      let installPrompt = null;
-      let cssFullscreen = false;
-      let resizeTimer = null;
+      let running = false;
 
-      function calculateScale() {
-        const rect = app.getBoundingClientRect();
-
-        const availableWidth = Math.max(1, rect.width);
-        const availableHeight = Math.max(1, rect.height);
-
-        const scale = Math.min(
-          availableWidth / BASE_WIDTH,
-          availableHeight / BASE_HEIGHT
-        );
-
-        frame.style.transform =
-          `translate(-50%, -50%) scale(${scale})`;
-
-        return {
-          scale,
-          width: Math.round(BASE_WIDTH * scale),
-          height: Math.round(BASE_HEIGHT * scale)
-        };
-      }
-
-      function scheduleResize() {
-        clearTimeout(resizeTimer);
-
-        resizeTimer = setTimeout(() => {
-          const result = calculateScale();
-
-          status.textContent =
-            `Viewport adattato: ${result.width} × ${result.height}`;
-        }, 120);
-      }
-
-      function isFullscreen() {
-        return document.fullscreenElement === app ||
-          document.webkitFullscreenElement === app ||
-          cssFullscreen;
-      }
-
-      function updateFullscreenButton() {
-        fullscreenButton.textContent = isFullscreen()
-          ? "✕ Esci"
-          : "⛶ Schermo intero";
-      }
-
-      async function enterFullscreen() {
+      function requestWindowFocus(win) {
         try {
-          if (app.requestFullscreen) {
-            await app.requestFullscreen({
-              navigationUI: "hide"
-            });
-          } else if (app.webkitRequestFullscreen) {
-            app.webkitRequestFullscreen();
-          } else {
-            /*
-              Fallback visivo per browser che non consentono
-              il fullscreen nativo di elementi HTML.
-            */
-            cssFullscreen = true;
-            app.classList.add("css-fullscreen");
+          win.focus();
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function collectFrames() {
+        const collected = [];
+        const visited = new Set();
+
+        function visit(win, path) {
+          if (!win || visited.has(win)) {
+            return;
           }
 
-          // Tentativo di orientamento landscape sui dispositivi
-          // che supportano il blocco dell'orientamento.
-          if (
-            screen.orientation &&
-            typeof screen.orientation.lock === "function"
-          ) {
+          visited.add(win);
+
+          let count = 0;
+
+          try {
+            count = win.length;
+          } catch (error) {
+            collected.push({
+              win,
+              path,
+              children: null,
+              readable: false
+            });
+            return;
+          }
+
+          collected.push({
+            win,
+            path,
+            children: count,
+            readable: true
+          });
+
+          for (let i = 0; i < count; i++) {
             try {
-              await screen.orientation.lock("landscape");
-            } catch (_) {
-              // iOS e alcuni browser non consentono questo lock.
+              visit(win.frames[i], path.concat(i));
+            } catch (error) {
+              console.warn(
+                "Frame non raggiungibile:",
+                path.concat(i),
+                error
+              );
             }
           }
-        } catch (error) {
-          cssFullscreen = true;
-          app.classList.add("css-fullscreen");
-
-          status.textContent =
-            "Modalità a schermo intero compatibile attivata.";
         }
 
-        calculateScale();
-        updateFullscreenButton();
-      }
-
-      async function exitFullscreen() {
         try {
-          if (
-            document.fullscreenElement === app &&
-            document.exitFullscreen
-          ) {
-            await document.exitFullscreen();
-          } else if (
-            document.webkitFullscreenElement === app &&
-            document.webkitExitFullscreen
-          ) {
-            document.webkitExitFullscreen();
-          }
+          visit(frame.contentWindow, ["siteFrame"]);
         } catch (error) {
-          console.warn("Uscita dal fullscreen:", error);
+          console.warn(
+            "Impossibile accedere al frame Hattrick:",
+            error
+          );
         }
 
-        if (
-          screen.orientation &&
-          typeof screen.orientation.unlock === "function"
-        ) {
-          try {
-            screen.orientation.unlock();
-          } catch (_) {}
-        }
-
-        cssFullscreen = false;
-        app.classList.remove("css-fullscreen");
-
-        calculateScale();
-        updateFullscreenButton();
+        return collected;
       }
 
-      fullscreenButton.addEventListener("click", async () => {
-        if (isFullscreen()) {
-          await exitFullscreen();
-        } else {
-          await enterFullscreen();
+      function attemptFInContext(context) {
+        const win = context.win;
+        const result = {
+          percorso: context.path.join(" → "),
+          inviato: false,
+          motivo: ""
+        };
+
+        /*
+          Tenta di inviare eventi sintetici al documento del contesto.
+          L'accesso al documento di un frame cross-origin sarà
+          normalmente bloccato dal browser.
+        */
+        try {
+          const doc = win.document;
+          const target =
+            doc.activeElement &&
+            doc.activeElement !== doc.body
+              ? doc.activeElement
+              : doc;
+
+          const options = {
+            key: "f",
+            code: "KeyF",
+            keyCode: 70,
+            which: 70,
+            bubbles: true,
+            cancelable: true,
+            composed: true
+          };
+
+          target.dispatchEvent(
+            new win.KeyboardEvent("keydown", options)
+          );
+
+          setTimeout(() => {
+            try {
+              target.dispatchEvent(
+                new win.KeyboardEvent("keyup", options)
+              );
+            } catch (_) {}
+          }, 50);
+
+          result.inviato = true;
+          result.motivo =
+            "Evento sintetico inviato al documento accessibile";
+        } catch (error) {
+          result.motivo =
+            "DOM non accessibile: " + error.name;
         }
-      });
 
-      document.addEventListener("fullscreenchange", () => {
-        calculateScale();
-        updateFullscreenButton();
-      });
-
-      document.addEventListener("webkitfullscreenchange", () => {
-        calculateScale();
-        updateFullscreenButton();
-      });
-
-      window.addEventListener("resize", scheduleResize);
-
-      window.addEventListener("orientationchange", () => {
-        setTimeout(calculateScale, 250);
-        setTimeout(calculateScale, 700);
-      });
-
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", scheduleResize);
+        return result;
       }
 
-      frame.addEventListener("load", () => {
-        calculateScale();
+      async function focusPlayer() {
+        if (running) return;
+
+        running = true;
+        button.disabled = true;
+        buttonText.textContent = "RICERCA PLAYER…";
+        status.classList.remove("hidden");
+        status.textContent = "Richiesta del focus in corso…";
+
+        /*
+          Primo tentativo: focus diretto sull'iframe Hattrick.
+        */
+        try {
+          frame.focus({ preventScroll: true });
+        } catch (_) {
+          frame.focus();
+        }
+
+        requestWindowFocus(frame.contentWindow);
+
+        await sleep(300);
+
+        let contexts = collectFrames();
+
+        /*
+          Se non sono stati enumerati frame discendenti,
+          attende il caricamento iniziale e riprova.
+        */
+        if (contexts.length <= 1) {
+          await sleep(700);
+          contexts = collectFrames();
+        }
+
+        contexts.sort(
+          (a, b) => a.path.length - b.path.length
+        );
+
+        let focusAttempts = 0;
+
+        for (const context of contexts) {
+          if (requestWindowFocus(context.win)) {
+            focusAttempts++;
+          }
+
+          await sleep(100);
+        }
+
+        /*
+          Ultimo tentativo di focus sul contesto più profondo
+          raggiungibile dalla finestra esterna.
+        */
+        if (contexts.length > 0) {
+          const deepest = contexts[contexts.length - 1];
+
+          requestWindowFocus(deepest.win);
+
+          console.log(
+            "Ultimo contesto raggiunto:",
+            deepest.path.join(" → ")
+          );
+        }
+
+        console.table(
+          contexts.map(context => ({
+            percorso: context.path.join(" → "),
+            profondità: context.path.length,
+            sottoframe: context.children,
+            contestoLeggibile: context.readable
+          }))
+        );
+
+        /*
+          Tentativo finale di F, partendo dai frame più profondi.
+          Questo non equivale a una pressione fisica del tasto.
+        */
+        const deepestFirst = [...contexts].sort(
+          (a, b) => b.path.length - a.path.length
+        );
+
+        const results = [];
+
+        for (const context of deepestFirst) {
+          results.push(attemptFInContext(context));
+        }
+
+        console.table(results);
+
+        /*
+          Rimuove il pulsante per lasciare visibile l'intero player.
+          L'overlay non intercetta più interazioni successive.
+        */
+        button.classList.add("hidden");
 
         status.textContent =
-          "Hattrick caricato. Ruota il dispositivo per una visualizzazione più ampia.";
-      });
+          "Focus richiesto. Contesti: " + contexts.length +
+          ". Tentativi focus: " + focusAttempts +
+          ". Tentativi F completati: " +
+          results.filter(result => result.inviato).length +
+          ". Se il player non entra in fullscreen, premi F fisicamente.";
 
-      window.addEventListener("beforeinstallprompt", event => {
-        event.preventDefault();
-        installPrompt = event;
-        installButton.hidden = false;
-      });
-
-      window.addEventListener("appinstalled", () => {
-        installPrompt = null;
-        installButton.hidden = true;
-        status.textContent = "Hattrick Stream installato.";
-      });
-
-      installButton.addEventListener("click", async () => {
-        if (installPrompt) {
-          installPrompt.prompt();
-          await installPrompt.userChoice;
-          installPrompt = null;
-          installButton.hidden = true;
-          return;
-        }
-
-        const isApple = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-        status.textContent = isApple
-          ? "In Safari: Condividi → Aggiungi alla schermata Home."
-          : "Apri il menu del browser e scegli Installa app o Aggiungi alla schermata Home.";
-      });
-
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", async () => {
-          try {
-            await navigator.serviceWorker.register("./sw.js", {
-              scope: "./"
-            });
-          } catch (error) {
-            console.warn("Service worker:", error);
-          }
+        console.log({
+          pagina: location.href,
+          contestiIndividuati: contexts.length,
+          tentativiFocusRiusciti: focusAttempts,
+          risultatiF: results
         });
+
+        running = false;
+        button.disabled = false;
       }
 
-      calculateScale();
+      button.addEventListener("click", focusPlayer);
+
+      frame.addEventListener("load", () => {
+        status.textContent =
+          "Hattrick caricato. Premi AVVIA PLAYER per tentare focus e fullscreen.";
+      });
+
+      /*
+        Registra il service worker esistente per la PWA, se presente.
+      */
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("./sw.js", { scope: "./" })
+            .catch(error => {
+              console.warn("Service worker non registrato:", error);
+            });
+        });
+      }
     })();
   </script>
 </body>
