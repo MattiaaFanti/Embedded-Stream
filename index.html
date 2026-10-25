@@ -5,33 +5,54 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <title>SportsOnlinee — HD8</title>
+  <meta name="description" content="Hattrick Sport in un'interfaccia a schermo intero.">
+
+  <title>Hattrick Stream</title>
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Hattrick Stream">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <style>
+    :root {
+      color-scheme: dark;
+      --bg: #000;
+      --button: rgba(20, 25, 35, .92);
+      --border: rgba(255,255,255,.24);
+      --text: #fff;
+    }
+
     * {
       box-sizing: border-box;
     }
 
     html, body {
-      width: 100%;
-      height: 100%;
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      background: #000;
-      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, Arial, sans-serif;
     }
 
-    #stage {
+    #app {
       position: fixed;
       inset: 0;
       width: 100%;
       height: 100%;
+      height: 100dvh;
       overflow: hidden;
       background: #000;
     }
 
-    #playerFrame {
+    #siteFrame {
       position: absolute;
       inset: 0;
       display: block;
@@ -41,49 +62,68 @@
       background: #000;
     }
 
-    #fullscreenButton {
+    #controls {
       position: absolute;
-      z-index: 2147483647;
+      z-index: 1000;
       top: max(10px, env(safe-area-inset-top));
-      left: 10px;
-      min-width: 48px;
-      min-height: 48px;
-      padding: 10px 15px;
-      border: 1px solid rgba(255,255,255,.8);
-      border-radius: 9px;
-      background: rgba(12,15,22,.92);
-      color: #fff;
-      font-size: 15px;
-      font-weight: bold;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: calc(100% - 20px);
+      padding: 7px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--button);
+      box-shadow: 0 4px 18px rgba(0,0,0,.35);
+    }
+
+    .control {
+      min-height: 42px;
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 8px;
+      background: #253044;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
       cursor: pointer;
-      box-shadow: 0 3px 15px rgba(0,0,0,.4);
       touch-action: manipulation;
     }
 
-    #fullscreenButton:active {
-      background: #245bc7;
+    .control:active {
+      background: #3a4d6a;
+    }
+
+    #installButton[hidden] {
+      display: none;
     }
 
     #status {
       position: absolute;
-      z-index: 2147483646;
+      z-index: 999;
       left: 10px;
+      right: 10px;
       bottom: max(10px, env(safe-area-inset-bottom));
+      width: fit-content;
       max-width: calc(100% - 20px);
-      padding: 7px 10px;
-      border-radius: 6px;
+      margin: auto;
+      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 8px;
       background: rgba(0,0,0,.75);
-      color: #fff;
+      color: #eee;
       font-size: 12px;
+      line-height: 1.4;
+      text-align: center;
       pointer-events: none;
     }
 
-    #status.hidden {
-      display: none;
-    }
-
-    #stage:fullscreen,
-    #stage:-webkit-full-screen {
+    #app:fullscreen,
+    #app:-webkit-full-screen,
+    #app.css-fullscreen {
       position: fixed;
       inset: 0;
       width: 100vw;
@@ -94,32 +134,45 @@
       background: #000;
     }
 
-    #stage:fullscreen #playerFrame,
-    #stage:-webkit-full-screen #playerFrame {
-      width: 100%;
-      height: 100%;
+    @media (max-width: 480px) {
+      #controls {
+        gap: 5px;
+        padding: 5px;
+      }
+
+      .control {
+        min-height: 40px;
+        padding: 9px 10px;
+        font-size: 12px;
+      }
     }
   </style>
 </head>
 
 <body>
-  <main id="stage">
+  <main id="app">
 
     <iframe
-      id="playerFrame"
-      src="https://w1.sportsonlinee.click/channels/hd/hd8.php"
-      title="SportsOnlinee HD8"
-      allow="fullscreen *; autoplay *; encrypted-media *; picture-in-picture *"
+      id="siteFrame"
+      src="https://htsport.info/calcio.htm"
+      title="Hattrick Sport"
+      allow="fullscreen *; autoplay *; picture-in-picture *; encrypted-media *"
       allowfullscreen
       referrerpolicy="strict-origin-when-cross-origin">
     </iframe>
 
-    <button id="fullscreenButton" type="button">
-      ⛶ FULLSCREEN
-    </button>
+    <nav id="controls" aria-label="Controlli applicazione">
+      <button id="fullscreenButton" class="control" type="button">
+        ⛶ Schermo intero
+      </button>
 
-    <div id="status">
-      Caricamento del player HD8…
+      <button id="installButton" class="control" type="button" hidden>
+        Installa
+      </button>
+    </nav>
+
+    <div id="status" role="status" aria-live="polite">
+      Caricamento di Hattrick Sport…
     </div>
 
   </main>
@@ -128,71 +181,133 @@
     (() => {
       "use strict";
 
-      const stage = document.getElementById("stage");
-      const frame = document.getElementById("playerFrame");
-      const button = document.getElementById("fullscreenButton");
+      const app = document.getElementById("app");
+      const frame = document.getElementById("siteFrame");
+      const fullscreenButton = document.getElementById("fullscreenButton");
+      const installButton = document.getElementById("installButton");
       const status = document.getElementById("status");
 
+      let installPrompt = null;
+      let cssFullscreen = false;
+
       function isFullscreen() {
-        return document.fullscreenElement === stage ||
-               document.webkitFullscreenElement === stage;
+        return document.fullscreenElement === app ||
+          document.webkitFullscreenElement === app ||
+          cssFullscreen;
       }
 
-      async function toggleFullscreen() {
-        try {
-          if (isFullscreen()) {
-            if (document.exitFullscreen) {
-              await document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-              document.webkitExitFullscreen();
-            }
-            return;
-          }
+      function updateFullscreenButton() {
+        fullscreenButton.textContent = isFullscreen()
+          ? "✕ Esci"
+          : "⛶ Schermo intero";
+      }
 
-          if (stage.requestFullscreen) {
-            await stage.requestFullscreen();
-          } else if (stage.webkitRequestFullscreen) {
-            stage.webkitRequestFullscreen();
+      async function enterFullscreen() {
+        try {
+          if (app.requestFullscreen) {
+            await app.requestFullscreen({
+              navigationUI: "hide"
+            });
+            cssFullscreen = false;
+          } else if (app.webkitRequestFullscreen) {
+            app.webkitRequestFullscreen();
+            cssFullscreen = false;
           } else {
-            throw new Error(
-              "Fullscreen non supportato da questo browser."
-            );
+            // Fallback visivo per browser senza Fullscreen API
+            // disponibile per gli elementi HTML.
+            cssFullscreen = true;
+            app.classList.add("css-fullscreen");
+            status.textContent =
+              "Modalità schermo intero compatibile attivata.";
           }
         } catch (error) {
+          // Mantiene la pagina utilizzabile se il fullscreen nativo
+          // viene rifiutato dal browser.
+          cssFullscreen = true;
+          app.classList.add("css-fullscreen");
           status.textContent =
-            "Fullscreen non riuscito: " +
-            (error.name || "Errore") +
-            (error.message ? " — " + error.message : "");
+            "Modalità schermo intero compatibile attivata.";
+          console.warn("Fullscreen nativo non disponibile:", error);
         }
+
+        updateFullscreenButton();
       }
 
-      function updateFullscreenState() {
+      async function exitFullscreen() {
+        try {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (
+            document.webkitFullscreenElement &&
+            document.webkitExitFullscreen
+          ) {
+            document.webkitExitFullscreen();
+          }
+        } catch (error) {
+          console.warn("Uscita fullscreen:", error);
+        }
+
+        cssFullscreen = false;
+        app.classList.remove("css-fullscreen");
+        updateFullscreenButton();
+      }
+
+      fullscreenButton.addEventListener("click", async () => {
         if (isFullscreen()) {
-          button.textContent = "✕ ESCI";
-          status.textContent =
-            "Fullscreen attivo. Premi ESCI o usa il comando Indietro del browser.";
+          await exitFullscreen();
         } else {
-          button.textContent = "⛶ FULLSCREEN";
-          status.textContent = "Player nella pagina normale.";
+          await enterFullscreen();
         }
-      }
+      });
 
-      button.addEventListener("click", toggleFullscreen);
-
-      document.addEventListener(
-        "fullscreenchange",
-        updateFullscreenState
-      );
-
-      document.addEventListener(
-        "webkitfullscreenchange",
-        updateFullscreenState
-      );
+      document.addEventListener("fullscreenchange", updateFullscreenButton);
+      document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
 
       frame.addEventListener("load", () => {
-        status.textContent =
-          "Pagina HD8 caricata. Premi FULLSCREEN per espandere il player.";
+        status.textContent = "Pagina Hattrick caricata.";
       });
+
+      // Installazione PWA supportata, ad esempio, da Chrome Android.
+      window.addEventListener("beforeinstallprompt", event => {
+        event.preventDefault();
+        installPrompt = event;
+        installButton.hidden = false;
+      });
+
+      window.addEventListener("appinstalled", () => {
+        installPrompt = null;
+        installButton.hidden = true;
+        status.textContent = "Hattrick Stream installato.";
+      });
+
+      installButton.addEventListener("click", async () => {
+        if (installPrompt) {
+          installPrompt.prompt();
+          await installPrompt.userChoice;
+          installPrompt = null;
+          installButton.hidden = true;
+          return;
+        }
+
+        const isApple = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        status.textContent = isApple
+          ? "In Safari: Condividi → Aggiungi alla schermata Home."
+          : "Apri il menu del browser e seleziona Installa app o Aggiungi alla schermata Home.";
+      });
+
+      // Registra il service worker per la shell PWA.
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", async () => {
+          try {
+            await navigator.serviceWorker.register("./sw.js", {
+              scope: "./"
+            });
+          } catch (error) {
+            console.error("Registrazione service worker:", error);
+          }
+        });
+      }
     })();
   </script>
 </body>
