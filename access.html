@@ -34,6 +34,18 @@
         </form>
         <p class="hint">La registrazione viene rifiutata se il nome è già utilizzato o se viene rilevata una Passkey già associata a un account. Solo l’amministratore può vedere il seriale di registrazione e approvare la richiesta.</p>
       </div>
+
+      <div id="adminPasswordLogin" class="pane hidden">
+        <div class="pill">AREA RISERVATA</div>
+        <h1>Accesso amministratore</h1>
+        <p>Accedi al pannello di controllo da questo dispositivo con la password amministratore.</p>
+        <form id="siteAdminPasswordForm">
+          <label for="siteAdminPassword">Password amministratore</label>
+          <input id="siteAdminPassword" type="password" name="password" required maxlength="256" autocomplete="current-password" placeholder="Password">
+          <button type="submit" class="button primary">Entra nel pannello admin</button>
+        </form>
+        <button id="backToSiteBtn" type="button" class="button quiet">Torna all'accesso utenti</button>
+      </div>
       <div id="pending" class="pane hidden">
         <div class="pill">AUTORIZZAZIONE IN ATTESA</div>
         <h1>Registrazione ricevuta</h1>
@@ -50,7 +62,7 @@
         <button class="button secondary" id="skipGuide" type="button">Apri subito HTSport</button>
       </div>
       <p id="message" class="message hidden" role="alert"></p>
-      <footer class="foot">Accesso protetto · Cloudflare D1 · WebAuthn</footer>
+      <footer class="foot">Accesso protetto · Cloudflare D1 · <button id="openAdminLoginBtn" type="button" class="textlink">Accesso amministratore</button></footer>
     </section>
   </main>
   <section id="player" class="player hidden">
@@ -65,7 +77,7 @@
     <div id="frameHost" class="framehost"></div>
   </section>
   <script src="config.js?v=20261031-1430"></script>
-  <script src="auth.js?v=20261031-fix3"></script>
-  <script src="site.js?v=20261031-fix3"></script>
+  <script src="auth.js?v=20261031-adminpw1"></script>
+  <script src="site.js?v=20261031-adminpw1"></script>
 </body>
 </html>
