@@ -26,9 +26,18 @@ input:focus,textarea:focus,select:focus { border-color:var(--accent); box-shadow
 .spinner { border:3px solid #34445d; border-top-color:#8bb5ff; width:33px; height:33px; border-radius:50%; animation:spin .85s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 .player { position:fixed; inset:0; display:flex; flex-direction:column; background:#000; }
-/* Only append these links inside the original userscript status bar.
-   No fixed position, additional header, background, or reserved page height. */
-.admin-bar-actions { display:inline-flex; align-items:center; gap:10px; flex:0 0 auto; margin-left:auto; padding-left:12px; font-size:12px; font-weight:600; line-height:1.4; white-space:nowrap; color:inherit; }
+/* Una sola barra visibile dopo il login. Rimane anche quando lo userscript non viene eseguito. */
+.htsport-native-status { position:relative; z-index:3; flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 18px; min-height:43px; padding:7px 14px; background:#0d1522; border-bottom:1px solid #2c3c50; color:#e6eefb; font-size:12px; }
+.htsport-status-main { display:flex; align-items:center; gap:9px; min-width:0; white-space:nowrap; }
+.htsport-status-main strong { color:#fff; font-size:13px; font-weight:750; }
+.htsport-online-dot { flex:0 0 9px; width:9px; height:9px; border-radius:50%; background:#8b93a2; box-shadow:0 0 0 2px #ffffff13; }
+.htsport-online-dot.online { background:#2bdf90; box-shadow:0 0 7px #2bdf9066; }
+.htsport-online-dot.offline { background:#f16e79; box-shadow:0 0 7px #f16e7960; }
+.htsport-status-main #htsportOnlineText { font-weight:750; font-size:11px; letter-spacing:.035em; }
+.htsport-web-version { color:#9eb0c8; padding-left:9px; border-left:1px solid #394a60; font-size:11px; }
+.htsport-status-right { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:10px; margin-left:auto; }
+.htsport-update-button { padding:4px 9px; background:#244a33; border:1px solid #45815b; color:#d2f6db; font-size:11px; font-weight:700; border-radius:6px; cursor:pointer; }
+.admin-bar-actions { display:inline-flex; align-items:center; gap:10px; flex:0 0 auto; font-size:12px; font-weight:600; line-height:1.4; white-space:nowrap; color:inherit; }
 .admin-bar-actions a, .admin-bar-actions button { color:inherit; font:inherit; text-decoration:underline; text-underline-offset:2px; background:transparent; border:0; padding:0; cursor:pointer; }
 .admin-bar-actions a:hover, .admin-bar-actions button:hover { text-decoration-thickness:2px; }
 .framehost { flex:1; min-height:0; } #htsport-frame { width:100%; height:100%; border:0; display:block; background:black; }
@@ -51,4 +60,4 @@ td { overflow-wrap:anywhere; } td code { font-size:11px; color:#c6d8f7; }
 .tag.active { background:#1b453f; color:#93edd5; }.tag.pending { background:#533e22; color:#f5c580; }.tag.banned,.tag.revoked { background:#4e2736; color:#ffafbf; }
 .formgrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .formgrid .wide { grid-column:1 / -1; } .inlineform { display:flex; gap:10px; align-items:end; }
 .inlineform>* { flex:1; } .monotext { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; word-break:break-all; }
-@media(max-width:650px) { .panel { padding:24px 20px; } .admin-bar-actions { gap:6px; padding-left:6px; font-size:11px; } .admin { padding:12px; } .formgrid { grid-template-columns:1fr; } .inlineform { display:block; } }
+@media(max-width:650px) { .panel { padding:24px 20px; } .htsport-native-status { padding:7px 9px; gap:5px; } .htsport-status-main { gap:6px; } .htsport-status-right { gap:6px; } .admin-bar-actions { gap:7px; font-size:11px; } .admin { padding:12px; } .formgrid { grid-template-columns:1fr; } .inlineform { display:block; } }
