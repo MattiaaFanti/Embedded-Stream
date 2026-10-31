@@ -1,72 +1,56 @@
+
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover"
-    >
-    <meta name="theme-color" content="#000000">
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
 
-    <title>Embedded Stream</title>
+  <title>HTSport</title>
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+  <meta
+    name="theme-color"
+    content="#000000"
+  >
 
-        html,
-        body {
-            margin: 0;
-            min-height: 100%;
-            background: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
-        }
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        body {
-            display: flex;
-            min-height: 100vh;
-            min-height: 100dvh;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 24px;
-        }
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: #000;
+    }
 
-        a {
-            display: inline-block;
-            margin-top: 12px;
-            padding: 14px 20px;
-            border-radius: 8px;
-            background: #1769ff;
-            color: #fff;
-            font-weight: bold;
-            text-decoration: none;
-        }
-    </style>
+    #htsport-frame {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+  </style>
 </head>
 
 <body>
-    <main>
-        <p>Connessione al player in corso…</p>
 
-        <a href="https://hattrick-player-control.yaboyo95.workers.dev/">
-            APRI HATTRICK
-        </a>
+  <iframe
+    id="htsport-frame"
+    src="https://htsport.info/"
+    title="HTSport"
+    allow="autoplay; fullscreen; picture-in-picture"
+    allowfullscreen
+    webkitallowfullscreen
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
 
-        <noscript>
-            <p>JavaScript è disattivato. Tocca il pulsante per continuare.</p>
-        </noscript>
-    </main>
-
-    <script>
-        (() => {
-            const WORKER_URL =
-                "https://hattrick-player-control.yaboyo95.workers.dev/";
-
-            window.location.replace(WORKER_URL);
-        })();
-    </script>
 </body>
 </html>
