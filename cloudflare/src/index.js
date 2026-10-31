@@ -162,7 +162,7 @@ async function insertRegistration(env, username, role, status, info, userId) {
         SELECT ?,?,?,?,?,?
         WHERE NOT EXISTS (
           SELECT 1 FROM users
-          WHERE role='user' AND lower(trim(username))=lower(trim(?))
+          WHERE lower(trim(username))=lower(trim(?))
         )`).bind(userId, username, role, status, timestamp, timestamp, username)
     : env.DB.prepare('INSERT INTO users (id,username,role,status,created_at,updated_at) VALUES (?,?,?,?,?,?)')
       .bind(userId, username, role, status, timestamp, timestamp);
@@ -228,13 +228,13 @@ async function route(request, env) {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
     const username = validateName(b.username);
-    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(trim(username))=lower(trim(?)) LIMIT 1").bind(username).first();
+    const already = await env.DB.prepare("SELECT id FROM users WHERE lower(trim(username))=lower(trim(?)) LIMIT 1").bind(username).first();
     if (already) return fail('USERNAME_ALREADY_REGISTERED', 409);
     return ok(await registrationOptions(env, username, 'register'));
   }
   if (method === 'POST' && path === '/api/register/verify') {
     const { ctx, info } = await verifyRegistration(env, await readJSON(request), 'register');
-    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(trim(username))=lower(trim(?)) LIMIT 1").bind(ctx.username).first();
+    const already = await env.DB.prepare("SELECT id FROM users WHERE lower(trim(username))=lower(trim(?)) LIMIT 1").bind(ctx.username).first();
     if (already) return fail('USERNAME_ALREADY_REGISTERED', 409);
     await insertRegistration(env, ctx.username, 'user', 'pending', info, ctx.userId);
     await audit(env, ctx.userId, 'register', ctx.userId);
