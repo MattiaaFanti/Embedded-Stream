@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "htsport-license-db",
-      "database_id": "REPLACE_WITH_REAL_D1_DATABASE_ID",
+      "database_id": "9a1f6249-aa0d-4879-beb4-02e7e34ca481",
       "migrations_dir": "migrations"
     }
   ]
