@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#080c14">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https:; frame-src https://htsport.info; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'">
   <title>HTSport · Accesso protetto</title>
-  <link rel="stylesheet" href="style.css?v=20261101-statusbar3">
+  <link rel="stylesheet" href="style.css?v=20261101-reliablebar4">
 </head>
 <body>
   <main id="gate" class="gate">
@@ -66,17 +66,26 @@
     </section>
   </main>
   <section id="player" class="player hidden">
+    <header id="htsportNativeStatus" class="htsport-native-status" aria-label="Stato HTSport">
+      <div class="htsport-status-main">
+        <span id="htsportOnlineDot" class="htsport-online-dot checking" aria-hidden="true"></span>
+        <strong>HTSport</strong>
+        <span id="htsportOnlineText" role="status" aria-live="polite">Verifica online...</span>
+        <span class="htsport-web-version" id="htsportWebVersion">Web v1.0.0</span>
+      </div>
+      <div id="htsportStatusRight" class="htsport-status-right">
+        <button id="htsportWebUpdate" class="htsport-update-button hidden" type="button">Aggiorna</button>
+        <nav id="adminActions" class="admin-bar-actions hidden" aria-label="Comandi amministratore">
+          <a id="installLink" href="https://hattrick-player-control.yaboyo95.workers.dev/" target="_blank" rel="noopener">Guida</a>
+          <a id="adminLink" href="admin.html">Pannello</a>
+          <button id="logoutBtn" type="button">Esci</button>
+        </nav>
+      </div>
+    </header>
     <div id="frameHost" class="framehost"></div>
   </section>
-  <!-- I link amministratore sono spostati nella barra originale dello userscript.
-       Nessun secondo header viene mostrato, e gli utenti normali non vedono questi link. -->
-  <nav id="adminActions" class="admin-bar-actions hidden" aria-label="Comandi amministratore">
-    <a id="installLink" href="https://hattrick-player-control.yaboyo95.workers.dev/" target="_blank" rel="noopener">Guida</a>
-    <a id="adminLink" href="admin.html">Pannello</a>
-    <button id="logoutBtn" type="button">Esci</button>
-  </nav>
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js?v=20261031-adminpw1"></script>
-  <script src="site.js?v=20261101-statusbar3"></script>
+  <script src="site.js?v=20261101-reliablebar4"></script>
 </body>
 </html>
