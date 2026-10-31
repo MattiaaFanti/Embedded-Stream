@@ -341,6 +341,18 @@ async function route(request, env) {
     await audit(env, admin.id, 'user_' + b.status, target);
     return ok({ updated: true });
   }
+  const removeUserMatch = path.match(/^\/api\/admin\/users\/([a-f0-9-]+)\/delete$/i);
+  if (method === 'POST' && removeUserMatch) {
+    const target = removeUserMatch[1];
+    if (target === admin.id) return fail('CANNOT_DELETE_ADMIN', 403);
+    const user = await env.DB.prepare('SELECT role FROM users WHERE id=?').bind(target).first();
+    if (!user) return fail('USER_NOT_FOUND', 404);
+    if (user.role !== 'user') return fail('CANNOT_DELETE_ADMIN', 403);
+    const outcome = await env.DB.prepare("DELETE FROM users WHERE id=? AND role='user'").bind(target).run();
+    if (outcome.meta.changes !== 1) return fail('USER_NOT_FOUND', 404);
+    await audit(env, admin.id, 'user_deleted', target);
+    return ok({ deleted: true });
+  }
   const revokeRoute = path.match(/^\/api\/admin\/credentials\/([A-Za-z0-9_-]+)\/revoke$/);
   if (method === 'POST' && revokeRoute) {
     const cred = await env.DB.prepare('SELECT user_id FROM credentials WHERE id=?').bind(revokeRoute[1]).first();
