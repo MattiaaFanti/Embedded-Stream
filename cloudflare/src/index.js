@@ -8,6 +8,9 @@ import {
 const enc = new TextEncoder();
 const now = () => Math.floor(Date.now() / 1000);
 const uuid = () => crypto.randomUUID();
+// Seriale di registrazione univoco, ricavato dall'UUID creato dal server.
+// Non e' un numero di serie hardware e non e' una chiave di licenza.
+const registrationSerial = (id) => 'HTS-' + String(id).replace(/-/g, '').toUpperCase().match(/.{1,8}/g).join('-');
 const randomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
 const b64u = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const from64 = (value) => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), (c) => c.charCodeAt(0));
@@ -138,6 +141,10 @@ async function verifyRegistration(env, body, purpose) {
 }
 async function insertRegistration(env, username, role, status, info, userId) {
   const cred = info.credential;
+  // D1 ha anche una PRIMARY KEY su credentials.id: la stessa Passkey
+  // non puo' essere assegnata a due utenti diversi.
+  const used = await env.DB.prepare('SELECT id FROM credentials WHERE id=?').bind(cred.id).first();
+  if (used) throw new Error('PASSKEY_ALREADY_REGISTERED');
   await env.DB.batch([
     env.DB.prepare('INSERT INTO users (id,username,role,status,created_at,updated_at) VALUES (?,?,?,?,?,?)')
       .bind(userId, username, role, status, now(), now()),
@@ -202,7 +209,7 @@ async function route(request, env) {
     const { ctx, info } = await verifyRegistration(env, await readJSON(request), 'register');
     await insertRegistration(env, ctx.username, 'user', 'pending', info, ctx.userId);
     await audit(env, ctx.userId, 'register', ctx.userId);
-    return ok({ username: ctx.username, status: 'pending', deviceId: ctx.userId }, 201);
+    return ok({ username: ctx.username, status: 'pending', deviceId: ctx.userId, registrationSerial: registrationSerial(ctx.userId) }, 201);
   }
   if (method === 'POST' && path === '/api/login/options') {
     await rate(env, request, 'login', 90, 3600);
@@ -232,7 +239,7 @@ async function route(request, env) {
 
   if (method === 'GET' && path === '/api/me') {
     const user = await auth(env, request);
-    return ok({ userId: user.id, username: user.username, role: user.role, status: user.status, deviceId: user.id });
+    return ok({ userId: user.id, username: user.username, role: user.role, status: user.status, registrationSerial: registrationSerial(user.id) });
   }
   if (method === 'POST' && path === '/api/logout') {
     const user = await auth(env, request);
@@ -251,7 +258,7 @@ async function route(request, env) {
     const users = await env.DB.prepare(
       "SELECT u.id,u.username,u.role,u.status,u.created_at,u.last_login_at,COUNT(c.id) AS credentials FROM users u LEFT JOIN credentials c ON c.user_id=u.id AND c.revoked_at IS NULL GROUP BY u.id ORDER BY u.created_at DESC LIMIT 500"
     ).all();
-    return ok({ users: users.results });
+    return ok({ users: users.results.map(u => ({ ...u, registrationSerial: registrationSerial(u.id) })) });
   }
   if (method === 'GET' && path === '/api/admin/credentials') {
     const items = await env.DB.prepare(
@@ -345,7 +352,7 @@ export default {
       }
     } catch (err) {
       const message = err && err.message || 'SERVER_ERROR';
-      const recognized = /^(LOGIN_REQUIRED|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
+      const recognized = /^(LOGIN_REQUIRED|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
       const status = message === 'RATE_LIMIT' ? 429 :
         message === 'LOGIN_REQUIRED' ? 401 :
         ['BANNED','ADMIN_REQUIRED','DEVICE_REVOKED_OR_UNKNOWN'].includes(message) ? 403 :
