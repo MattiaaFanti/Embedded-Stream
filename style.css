@@ -56,6 +56,10 @@ th,td { border-bottom:1px solid #29344b; padding:11px 9px; vertical-align:top; }
 td { overflow-wrap:anywhere; } td code { font-size:11px; color:#c6d8f7; }
 .smallbtn { border:1px solid #40516b; background:#22344e; color:#dce8fc; border-radius:7px; padding:6px 8px; margin:2px; font-size:12px; }
 .smallbtn.warn { color:#ffb5b7; border-color:#77414a; background:#3b222c; }
+.user-delete-cell,.user-delete-heading { text-align:center; width:54px; min-width:54px; }
+.delete-user-btn { display:inline-grid; place-items:center; width:30px; height:30px; padding:0; margin:0; border-radius:8px; font-size:22px; font-weight:700; line-height:1; background:#48222b; border:1px solid #9a4753; color:#ffbec5; }
+.delete-user-btn:hover { background:#81303e; color:#fff; }
+.delete-user-btn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
 .tag { display:inline-block; padding:3px 7px; border-radius:7px; background:#27374b; color:#cfdeed; font-size:11px; }
 .tag.active { background:#1b453f; color:#93edd5; }.tag.pending { background:#533e22; color:#f5c580; }.tag.banned,.tag.revoked { background:#4e2736; color:#ffafbf; }
 .formgrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .formgrid .wide { grid-column:1 / -1; } .inlineform { display:flex; gap:10px; align-items:end; }
