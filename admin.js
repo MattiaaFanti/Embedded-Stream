@@ -161,6 +161,12 @@
           await load();
         }, true);
       }
+      button(actions, 'Elimina', async () => {
+        if (!confirm('Eliminare definitivamente il seriale e le note? Operazione irreversibile.')) return;
+        await HTAuth.call('/api/admin/licenses/' + lic.id + '/delete', {});
+        if (state.editingId === lic.id) resetLicense();
+        await load();
+      }, true);
       body.append(row);
     });
   }
