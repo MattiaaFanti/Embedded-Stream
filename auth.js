@@ -63,33 +63,45 @@
       clientExtensionResults: cred.getClientExtensionResults()
     };
   }
-  // Prima di creare una nuova Passkey prova ad autenticare una credenziale
-  // gia' esistente per questo sito, anche se e' stata registrata con un altro nome.
+  // A registration is never started against an older Worker, even when the
+  // browser has a cached frontend version. This fails closed until deployment.
+  async function requireCurrentRegistrationWorker() {
+    const status = await call('/api/health');
+    if (status.version !== '1.3.0') throw Error('WORKER_UPDATE_REQUIRED');
+  }
+  // If the authenticator holds a credential registered with *any* username,
+  // verify it with the Worker and reject a second account instead of
+  // silently logging the visitor into the previous account.
   async function detectExistingRegistration() {
     const result = await call('/api/login/options', {});
     let credential;
     try {
       credential = await getCredential(result.options);
     } catch (e) {
-      // Nessuna Passkey disponibile, oppure selezione annullata.
-      // Il server inviera' comunque excludeCredentials nella registrazione.
-      if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError' || e.message === 'PASSKEY_CANCELLED')) return null;
+      // An authenticator may have no existing credential, or the user may
+      // cancel. Existing IDs are also passed as excludeCredentials later.
+      if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError' ||
+        e.message === 'PASSKEY_CANCELLED')) return false;
       throw e;
     }
-    const saved = await call('/api/login/verify', { requestId: result.requestId, credential });
-    setToken(saved.token);
-    return { ...saved, existing: true };
+    const found = await call('/api/register/probe/verify',
+      { requestId: result.requestId, credential });
+    return found.alreadyRegistered === true;
   }
   async function register(username, adminSecret) {
     const admin = adminSecret !== undefined;
-    if (!admin) {
-      const existing = await detectExistingRegistration();
-      if (existing) return existing;
-    }
-    const start = admin ? '/api/admin/bootstrap/options' : '/api/register/options';
-    const finish = admin ? '/api/admin/bootstrap/verify' : '/api/register/verify';
     const headers = admin ? { 'X-Bootstrap-Secret': adminSecret } : undefined;
-    const result = await call(start, { username }, headers);
+    let result;
+    if (!admin) {
+      await requireCurrentRegistrationWorker();
+      // The username is validated FIRST, before any native Passkey dialog.
+      // The Worker rechecks it on verification and in the INSERT itself.
+      result = await call('/api/register/options', { username });
+      if (await detectExistingRegistration()) throw Error('PASSKEY_ALREADY_REGISTERED');
+    } else {
+      result = await call('/api/admin/bootstrap/options', { username }, headers);
+    }
+    const finish = admin ? '/api/admin/bootstrap/verify' : '/api/register/verify';
     let credential;
     try {
       credential = await makeCredential(result.options);
