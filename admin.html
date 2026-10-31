@@ -52,8 +52,8 @@
     </div>
     <section id="tab-users" class="box">
       <h2>Autorizzazioni e ban</h2>
-      <p>Le nuove registrazioni rimangono in attesa. Un ban impedisce il ripristino delle sessioni e qualsiasi nuovo accesso con la Passkey associata.</p>
-      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>ID registrazione</th><th>Stato</th><th>Passkey</th><th>Ultimo accesso</th><th>Azioni</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+      <p>Ogni utente sceglie il proprio nome e riceve automaticamente un seriale identificativo univoco. Le registrazioni rimangono in attesa fino alla tua approvazione. Il seriale non corrisponde al numero hardware del dispositivo.</p>
+      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>Seriale automatico</th><th>Stato</th><th>Passkey</th><th>Ultimo accesso</th><th>Azioni</th></tr></thead><tbody id="usersBody"></tbody></table></div>
     </section>
     <section id="tab-devices" class="box hidden">
       <h2>Credenziali registrate</h2>
@@ -87,6 +87,6 @@
 
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js"></script>
-  <script src="admin.js"></script>
+  <script src="admin.js?v=20261031-serial1"></script>
 </body>
 </html>
