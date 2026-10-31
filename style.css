@@ -19,7 +19,7 @@ input:focus,textarea:focus,select:focus { border-color:var(--accent); box-shadow
 .quiet { background:transparent; color:var(--muted); } .danger { background:#44232d; border-color:#7c3a49; color:#ffadb7; }
 .line { display:flex; gap:10px; align-items:center; margin:26px 0 8px; font-size:10px; letter-spacing:.12em; color:#8493ab; }
 .line:before,.line:after { content:""; height:1px; background:var(--line); flex:1; }
-.registration-serial { overflow-wrap:anywhere; font-family:ui-monospace,Consolas,monospace; color:#c1d8f6; font-size:12px; }
+.approval-feedback { border:1px solid #536d93; background:#1b2e4a; color:#d7e8ff; padding:12px; border-radius:10px; margin:12px 0; font-size:13px; }
 .message { border:1px solid #824251; color:#ffc1c8; background:#3c1e2a; padding:12px; border-radius:10px; margin:15px 0 0; font-size:12px; overflow-wrap:anywhere; }
 .spinner { border:3px solid #34445d; border-top-color:#8bb5ff; width:33px; height:33px; border-radius:50%; animation:spin .85s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
