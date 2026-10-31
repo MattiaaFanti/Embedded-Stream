@@ -115,12 +115,23 @@ function validateName(v) {
 const rp = (env) => ({ rpName: 'HTSport Access', rpID: env.RP_ID });
 async function registrationOptions(env, username, purpose) {
   const userId = uuid();
+  // Escludi le Passkey gia' registrate, anche se l'utente cambia nome.
+  // Il browser/autenticatore impedisce di registrare di nuovo le stesse credenziali.
+  let excludeCredentials = [];
+  if (purpose === 'register') {
+    const existing = await env.DB.prepare('SELECT id,transports FROM credentials ORDER BY created_at DESC LIMIT 1001').all();
+    if (existing.results.length > 1000) throw new Error('REGISTRATION_CAPACITY_REACHED');
+    excludeCredentials = existing.results.map(c => ({
+      id: c.id, transports: JSON.parse(c.transports || '[]')
+    }));
+  }
   const options = await generateRegistrationOptions({
     ...rp(env), userName: username, userDisplayName: username,
     userID: enc.encode(userId),
     attestationType: 'none',
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     supportedAlgorithmIDs: [-7, -257],
+    excludeCredentials,
     timeout: 120000
   });
   const requestId = await challenge(env, purpose, options.challenge, { userId, username });
@@ -199,17 +210,22 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.1.0' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.2.0' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
-    return ok(await registrationOptions(env, validateName(b.username), 'register'));
+    const username = validateName(b.username);
+    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(username)=lower(?) LIMIT 1").bind(username).first();
+    if (already) return fail('USERNAME_ALREADY_REGISTERED', 409);
+    return ok(await registrationOptions(env, username, 'register'));
   }
   if (method === 'POST' && path === '/api/register/verify') {
     const { ctx, info } = await verifyRegistration(env, await readJSON(request), 'register');
+    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(username)=lower(?) LIMIT 1").bind(ctx.username).first();
+    if (already) return fail('USERNAME_ALREADY_REGISTERED', 409);
     await insertRegistration(env, ctx.username, 'user', 'pending', info, ctx.userId);
     await audit(env, ctx.userId, 'register', ctx.userId);
-    return ok({ username: ctx.username, status: 'pending', deviceId: ctx.userId, registrationSerial: registrationSerial(ctx.userId) }, 201);
+    return ok({ username: ctx.username, status: 'pending' }, 201);
   }
   if (method === 'POST' && path === '/api/login/options') {
     await rate(env, request, 'login', 90, 3600);
@@ -239,7 +255,7 @@ async function route(request, env) {
 
   if (method === 'GET' && path === '/api/me') {
     const user = await auth(env, request);
-    return ok({ userId: user.id, username: user.username, role: user.role, status: user.status, registrationSerial: registrationSerial(user.id) });
+    return ok({ userId: user.id, username: user.username, role: user.role, status: user.status });
   }
   if (method === 'POST' && path === '/api/logout') {
     const user = await auth(env, request);
@@ -352,7 +368,7 @@ export default {
       }
     } catch (err) {
       const message = err && err.message || 'SERVER_ERROR';
-      const recognized = /^(LOGIN_REQUIRED|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
+      const recognized = /^(LOGIN_REQUIRED|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|USERNAME_ALREADY_REGISTERED|REGISTRATION_CAPACITY_REACHED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
       const status = message === 'RATE_LIMIT' ? 429 :
         message === 'LOGIN_REQUIRED' ? 401 :
         ['BANNED','ADMIN_REQUIRED','DEVICE_REVOKED_OR_UNKNOWN'].includes(message) ? 403 :
