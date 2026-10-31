@@ -63,13 +63,40 @@
       clientExtensionResults: cred.getClientExtensionResults()
     };
   }
+  // Prima di creare una nuova Passkey prova ad autenticare una credenziale
+  // gia' esistente per questo sito, anche se e' stata registrata con un altro nome.
+  async function detectExistingRegistration() {
+    const result = await call('/api/login/options', {});
+    let credential;
+    try {
+      credential = await getCredential(result.options);
+    } catch (e) {
+      // Nessuna Passkey disponibile, oppure selezione annullata.
+      // Il server inviera' comunque excludeCredentials nella registrazione.
+      if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError' || e.message === 'PASSKEY_CANCELLED')) return null;
+      throw e;
+    }
+    const saved = await call('/api/login/verify', { requestId: result.requestId, credential });
+    setToken(saved.token);
+    return { ...saved, existing: true };
+  }
   async function register(username, adminSecret) {
     const admin = adminSecret !== undefined;
+    if (!admin) {
+      const existing = await detectExistingRegistration();
+      if (existing) return existing;
+    }
     const start = admin ? '/api/admin/bootstrap/options' : '/api/register/options';
     const finish = admin ? '/api/admin/bootstrap/verify' : '/api/register/verify';
     const headers = admin ? { 'X-Bootstrap-Secret': adminSecret } : undefined;
     const result = await call(start, { username }, headers);
-    const credential = await makeCredential(result.options);
+    let credential;
+    try {
+      credential = await makeCredential(result.options);
+    } catch (e) {
+      if (e && e.name === 'InvalidStateError') throw Error('PASSKEY_ALREADY_REGISTERED');
+      throw e;
+    }
     const saved = await call(finish, { requestId: result.requestId, credential }, headers);
     if (saved.token) setToken(saved.token);
     return saved;
