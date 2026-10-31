@@ -44,7 +44,7 @@
     for (const node of roots) {
       if (node.children.length || node.closest('#gate, #player, #adminActions')) continue;
       const value = (node.textContent || '').trim();
-      if (!/script\\s*htsport\\s*attivo|htsport\\s*script\\s*attivo|htsport\\s*(?:online|attivo)|aggiorna\\s*script/i.test(value)) continue;
+      if (!/script\s*htsport\s*attivo|htsport\s*script\s*attivo|htsport\s*(?:online|attivo)|aggiorna\s*script/i.test(value)) continue;
       let parent = node;
       for (let depth = 0; depth < 7 && parent && parent !== document.body; depth++, parent = parent.parentElement) {
         if (parent.id === 'gate' || parent.id === 'player') break;
