@@ -295,6 +295,14 @@ async function route(request, env) {
     await audit(env, admin.id, 'license_created', id);
     return ok({ id }, 201);
   }
+  const deleteLicense = path.match(/^\/api\/admin\/licenses\/([a-f0-9-]+)\/delete$/i);
+  if (method === 'POST' && deleteLicense) {
+    const id = deleteLicense[1];
+    const result = await env.DB.prepare('DELETE FROM licenses WHERE id=?').bind(id).run();
+    if (result.meta.changes !== 1) return fail('LICENSE_NOT_FOUND', 404);
+    await audit(env, admin.id, 'license_deleted', id);
+    return ok({ deleted: true });
+  }
   const licenseRoute = path.match(/^\/api\/admin\/licenses\/([a-f0-9-]+)$/i);
   if (method === 'POST' && licenseRoute) {
     const b = await readJSON(request), id = licenseRoute[1];
