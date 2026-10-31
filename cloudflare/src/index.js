@@ -228,17 +228,23 @@ async function route(request, env) {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
     const username = validateName(b.username);
-    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(username)=lower(?) LIMIT 1").bind(username).first();
+    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(trim(username))=lower(trim(?)) LIMIT 1").bind(username).first();
     if (already) return fail('USERNAME_ALREADY_REGISTERED', 409);
     return ok(await registrationOptions(env, username, 'register'));
   }
   if (method === 'POST' && path === '/api/register/verify') {
     const { ctx, info } = await verifyRegistration(env, await readJSON(request), 'register');
-    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(username)=lower(?) LIMIT 1").bind(ctx.username).first();
+    const already = await env.DB.prepare("SELECT id FROM users WHERE role='user' AND lower(trim(username))=lower(trim(?)) LIMIT 1").bind(ctx.username).first();
     if (already) return fail('USERNAME_ALREADY_REGISTERED', 409);
     await insertRegistration(env, ctx.username, 'user', 'pending', info, ctx.userId);
     await audit(env, ctx.userId, 'register', ctx.userId);
     return ok({ username: ctx.username, status: 'pending' }, 201);
+  }
+  // Proof of an existing Passkey, without issuing a new session or creating an account.
+  // Uses the same server-verified WebAuthn assertion as normal login.
+  if (method === 'POST' && path === '/api/register/probe/verify') {
+    const user = await verifyLogin(env, await readJSON(request));
+    return ok({ alreadyRegistered: true, status: user.status });
   }
   if (method === 'POST' && path === '/api/login/options') {
     await rate(env, request, 'login', 90, 3600);
