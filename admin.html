@@ -16,9 +16,15 @@
       <div id="adminLogin" class="pane hidden">
         <div class="pill">ACCESSO RISERVATO</div>
         <h1>Pannello di controllo</h1>
-        <p>Accedi con la Passkey dell'amministratore.</p>
-        <button id="adminLoginBtn" type="button" class="button primary">Accedi con Passkey</button>
-        <p class="hint">Nessuna password viene conservata in questa pagina.</p>
+        <p>Accedi con la Passkey amministratore, oppure usa la password da qualsiasi dispositivo.</p>
+        <button id="adminLoginBtn" type="button" class="button secondary">Accedi con Passkey</button>
+        <div class="line"><span>OPPURE CON PASSWORD</span></div>
+        <form id="adminPasswordForm">
+          <label for="adminPassword">Password amministratore</label>
+          <input id="adminPassword" type="password" name="password" required maxlength="256" autocomplete="current-password" placeholder="Password">
+          <button type="submit" class="button primary">Accedi al pannello</button>
+        </form>
+        <p class="hint">La password viene verificata dal Worker Cloudflare e non è salvata nel codice pubblico.</p>
       </div>
       <div id="bootstrap" class="pane hidden">
         <div class="pill">CONFIGURAZIONE INIZIALE</div>
@@ -86,7 +92,7 @@
   </section>
 
   <script src="config.js?v=20261031-1430"></script>
-  <script src="auth.js"></script>
-  <script src="admin.js?v=20261031-serial1"></script>
+  <script src="auth.js?v=20261031-adminpw1"></script>
+  <script src="admin.js?v=20261031-adminpw1"></script>
 </body>
 </html>
