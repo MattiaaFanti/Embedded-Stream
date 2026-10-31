@@ -1,5 +1,3 @@
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   username TEXT NOT NULL CHECK(length(username) BETWEEN 2 AND 40),
@@ -9,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at INTEGER NOT NULL,
   last_login_at INTEGER
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_administrator ON users(role) WHERE role='admin';
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS credentials (
