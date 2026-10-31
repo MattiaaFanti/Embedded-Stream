@@ -120,12 +120,18 @@
     setToken(saved.token);
     return saved;
   }
+  async function loginAdminWithPassword(password) {
+    const result = await call('/api/admin/password/login', { password });
+    if (!result.token || result.role !== 'admin') throw Error('INVALID_ADMIN_CREDENTIALS');
+    setToken(result.token);
+    return result;
+  }
   async function logout() {
     try { if (getToken()) await call('/api/logout', {}); }
     finally { setToken(''); }
   }
   window.HTAuth = Object.freeze({
-    ready, supported, call, register, login, logout, getToken, setToken,
+    ready, supported, call, register, login, loginAdminWithPassword, logout, getToken, setToken,
     installUrl: String(window.HTSPORT_INSTALL_URL || 'https://hattrick-player-control.yaboyo95.workers.dev/')
   });
 })();
