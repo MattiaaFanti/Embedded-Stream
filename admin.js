@@ -13,7 +13,10 @@
       ADMIN_REQUIRED: 'Questa Passkey non appartiene a un amministratore.',
       LOGIN_REQUIRED: 'Sessione scaduta. Accedi nuovamente.',
       SERVER_NOT_CONFIGURED: 'Il Worker non è ancora configurato.',
-      RATE_LIMIT: 'Troppe richieste. Riprova più tardi.'
+      RATE_LIMIT: 'Troppi tentativi. Riprova più tardi.',
+      INVALID_ADMIN_CREDENTIALS: 'Password amministratore errata.',
+      ADMIN_PASSWORD_NOT_CONFIGURED: 'Password amministratore non configurata su Cloudflare.',
+      ADMIN_UNAVAILABLE: 'Amministratore non disponibile.'
     };
     el.textContent = names[e.message] || e.message || String(e);
     el.classList.remove('hidden');
@@ -209,6 +212,18 @@
     work(this, async () => {
       await HTAuth.login();
       await dashboard();
+    });
+  });
+  $('adminPasswordForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    work(this.querySelector('button[type=submit]'), async () => {
+      const input = $('adminPassword');
+      try {
+        await HTAuth.loginAdminWithPassword(input.value);
+        await dashboard();
+      } finally {
+        input.value = '';
+      }
     });
   });
   $('bootstrapForm').addEventListener('submit', function (event) {
