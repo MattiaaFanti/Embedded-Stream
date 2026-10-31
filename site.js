@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const views = ['loading','setup','signin','pending','welcome','adminPasswordLogin'];
-  let account = null, redirectTimer = null, adminBarObserver = null;
+  let account = null, redirectTimer = null;
   function show(id) {
     views.forEach(v => $(v).classList.toggle('hidden', v !== id));
     $('gate').classList.remove('hidden');
@@ -36,58 +36,93 @@
     $('message').classList.add('hidden');
     Promise.resolve().then(task).catch(message).finally(() => button.disabled = false);
   }
-  // La barra di versione/online/aggiornamento appartiene allo userscript
-  // originale. Non viene nascosta, sostituita o ricostruita qui.
-  // Per l'admin inseriamo i soli link nello spazio previsto dalla barra.
+  // Barra affidabile: sempre visibile dopo l'autorizzazione.
+  // Se lo userscript originale crea davvero la sua barra nello stesso DOM,
+  // lasciamo quella originale e vi aggiungiamo soltanto i link admin.
+  // Altrimenti e' mostrata la barra nativa della pagina (senza doppioni).
+  const WEB_VERSION = '1.0.0';
+  const nativeBar = $('htsportNativeStatus');
+  const nativeActionsHost = $('htsportStatusRight');
   const adminActions = $('adminActions');
-  let adminBarCheckPending = false;
-  function findOriginalStatusBarSlot() {
-    const bar = document.getElementById('htsport-script-status-v308');
-    if (!bar) return null;
-    // Lo userscript riserva una sezione per i comandi, a fianco dello
-    // stato versione e dell'eventuale pulsante Aggiorna script.
-    return bar.querySelector('#htsport-status-action-v312') ||
-      document.getElementById('htsport-status-action-v312') || bar;
+  let webUpdateVersion = null;
+  let statusTimer = null;
+  let barObserver = null;
+  let barSyncScheduled = false;
+  function externalScriptBar() {
+    const node = document.getElementById('htsport-script-status-v308');
+    return node && node !== nativeBar && !nativeBar.contains(node) ? node : null;
   }
-  function attachAdminLinks() {
-    const isAdmin = account && account.role === 'admin' && account.status === 'active';
-    if (!isAdmin) {
-      adminActions.classList.add('hidden');
-      if (adminBarObserver) {
-        adminBarObserver.disconnect();
-        adminBarObserver = null;
-      }
-      return;
-    }
-    // La barra originale può essere montata in un secondo momento o
-    // ricreata dopo un aggiornamento. Aspettiamo il suo vero contenitore.
-    if (!adminBarObserver) {
-      adminBarObserver = new MutationObserver(() => {
-        if (adminBarCheckPending) return;
-        adminBarCheckPending = true;
-        queueMicrotask(() => {
-          adminBarCheckPending = false;
-          const slot = findOriginalStatusBarSlot();
-          if (slot && adminActions.parentElement !== slot) attachAdminLinks();
-        });
-      });
-      adminBarObserver.observe(document.body, { childList: true, subtree: true });
-    }
-    const slot = findOriginalStatusBarSlot();
-    if (!slot) {
-      adminActions.classList.add('hidden');
-      return;
-    }
-    if (adminActions.parentElement !== slot) slot.append(adminActions);
-    adminActions.classList.remove('hidden');
+  function syncStatusBar() {
+    const external = externalScriptBar();
+    nativeBar.classList.toggle('hidden', !!external);
+    const target = external || nativeActionsHost;
+    if (adminActions.parentElement !== target) target.append(adminActions);
+    const admin = !!account && account.role === 'admin' && account.status === 'active';
+    adminActions.classList.toggle('hidden', !admin);
   }
+  function watchForOriginalBar() {
+    if (barObserver) return;
+    barObserver = new MutationObserver(() => {
+      if (barSyncScheduled || $('player').classList.contains('hidden')) return;
+      barSyncScheduled = true;
+      requestAnimationFrame(() => { barSyncScheduled = false; syncStatusBar(); });
+    });
+    barObserver.observe(document.body, { childList:true, subtree:true });
+  }
+  function compareVersions(a, b) {
+    const parse = v => /^\d+(?:\.\d+){1,3}$/.test(v)
+      ? v.split('.').map(Number) : null;
+    const x = parse(a), y = parse(b);
+    if (!x || !y) return 0;
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1;
+    }
+    return 0;
+  }
+  async function updateStatus() {
+    if ($('player').classList.contains('hidden')) return;
+    const dot = $('htsportOnlineDot');
+    const txt = $('htsportOnlineText');
+    try {
+      const health = await HTAuth.call('/api/health');
+      if (!health.online) throw Error('API_OFFLINE');
+      dot.className = 'htsport-online-dot online';
+      txt.textContent = 'ONLINE';
+      dot.title = 'Servizio Cloudflare online' + (health.version ? ' · API ' + health.version : '');
+    } catch {
+      dot.className = 'htsport-online-dot offline';
+      txt.textContent = 'OFFLINE';
+      dot.title = 'Servizio Cloudflare non raggiungibile';
+    }
+    $('htsportWebVersion').textContent = 'Web v' + WEB_VERSION;
+    try {
+      const response = await fetch('version.json?check=' + Date.now(), { cache:'no-store' });
+      if (!response.ok) throw Error('VERSION_CHECK_FAILED');
+      const data = await response.json();
+      webUpdateVersion = typeof data.webVersion === 'string' &&
+        compareVersions(data.webVersion, WEB_VERSION) > 0 ? data.webVersion : null;
+      $('htsportWebUpdate').classList.toggle('hidden', !webUpdateVersion);
+    } catch {
+      // Non mostrare falsi aggiornamenti quando il controllo non riesce.
+      $('htsportWebUpdate').classList.add('hidden');
+    }
+  }
+  $('htsportWebUpdate').addEventListener('click', () => {
+    if (!webUpdateVersion) return;
+    const url = new URL(location.href);
+    url.searchParams.set('refresh', webUpdateVersion + '-' + Date.now());
+    location.replace(url.href);
+  });
   function stream() {
     if (redirectTimer) clearTimeout(redirectTimer);
     if (!account || account.status !== 'active') return;
     $('gate').classList.add('hidden');
     $('player').classList.remove('hidden');
     $('installLink').href = HTAuth.installUrl;
-    attachAdminLinks();
+    syncStatusBar();
+    watchForOriginalBar();
+    void updateStatus();
+    if (!statusTimer) statusTimer = setInterval(updateStatus, 60000);
     if (!$('htsport-frame')) {
       const frame = document.createElement('iframe');
       frame.id = 'htsport-frame'; frame.title = 'HTSport';
@@ -101,7 +136,7 @@
   }
   function afterAuth(u, checked = false) {
     account = u;
-    if (u.status !== 'active' || u.role !== 'admin') attachAdminLinks();
+    if (u.status !== 'active' || u.role !== 'admin') syncStatusBar();
     if (u.status === 'banned') { HTAuth.setToken(''); show('signin'); message(Error('BANNED')); return; }
     if (u.status === 'pending') {
       $('pendingName').textContent = 'Utente: ' + u.username;
@@ -156,11 +191,13 @@
   });
   $('pendingLogout').addEventListener('click', async () => {
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
-    account = null; attachAdminLinks(); show('signin');
+    account = null; syncStatusBar();
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } show('signin');
   });
   $('logoutBtn').addEventListener('click', async () => {
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
-    account = null; attachAdminLinks(); $('frameHost').replaceChildren(); show('signin');
+    account = null; syncStatusBar();
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } $('frameHost').replaceChildren(); show('signin');
   });
   $('openAdminLoginBtn').addEventListener('click', () => {
     if (redirectTimer) { clearTimeout(redirectTimer); redirectTimer = null; }
