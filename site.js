@@ -36,51 +36,52 @@
     $('message').classList.add('hidden');
     Promise.resolve().then(task).catch(message).finally(() => button.disabled = false);
   }
-  // The original version/online/update bar is created by the existing
-  // HTSport userscript. We never replace, restyle, or recreate that bar.
-  // Insert admin-only links as a small flex item after its existing contents.
-  function findOriginalStatusBar() {
-    // Look for the userscript's actual banner, not the HTSport site header.
-    // Check whole containers: the words "HTSport", "attivo", and the
-    // version/upgrade controls may be split among several child spans.
-    const marker = /script\s*htsport\s*attivo|htsport\s*script\s*attivo|htsport.{0,70}(?:online|attivo|versione|v\d)|aggiorna\s*script/i;
-    let fallback = null;
-    for (const node of document.querySelectorAll('body *')) {
-      if (node.closest('#gate, #adminActions')) continue;
-      const text = (node.textContent || '').trim();
-      if (text.length > 500 || !marker.test(text)) continue;
-      const rect = node.getBoundingClientRect();
-      if (rect.width < 180 || rect.height < 8 || rect.height > 140) continue;
-      const pos = getComputedStyle(node).position;
-      if (pos === 'fixed' || pos === 'sticky') return node;
-      // Original status bars embedded in the page may be static.
-      if (!fallback && rect.width >= Math.min(480, innerWidth * 0.72)) fallback = node;
-    }
-    return fallback;
+  // La barra di versione/online/aggiornamento appartiene allo userscript
+  // originale. Non viene nascosta, sostituita o ricostruita qui.
+  // Per l'admin inseriamo i soli link nello spazio previsto dalla barra.
+  const adminActions = $('adminActions');
+  let adminBarCheckPending = false;
+  function findOriginalStatusBarSlot() {
+    const bar = document.getElementById('htsport-script-status-v308');
+    if (!bar) return null;
+    // Lo userscript riserva una sezione per i comandi, a fianco dello
+    // stato versione e dell'eventuale pulsante Aggiorna script.
+    return bar.querySelector('#htsport-status-action-v312') ||
+      document.getElementById('htsport-status-action-v312') || bar;
   }
   function attachAdminLinks() {
-    const actions = $('adminActions');
-    if (!account || account.role !== 'admin' || account.status !== 'active') {
-      actions.classList.add('hidden');
-      if (adminBarObserver) { adminBarObserver.disconnect(); adminBarObserver = null; }
+    const isAdmin = account && account.role === 'admin' && account.status === 'active';
+    if (!isAdmin) {
+      adminActions.classList.add('hidden');
+      if (adminBarObserver) {
+        adminBarObserver.disconnect();
+        adminBarObserver = null;
+      }
       return;
     }
-    // The script can rebuild its status bar after an update; follow it.
+    // La barra originale può essere montata in un secondo momento o
+    // ricreata dopo un aggiornamento. Aspettiamo il suo vero contenitore.
     if (!adminBarObserver) {
       adminBarObserver = new MutationObserver(() => {
-        if (!actions.isConnected || actions.parentElement?.dataset.htsportAdminHost !== 'true') attachAdminLinks();
+        if (adminBarCheckPending) return;
+        adminBarCheckPending = true;
+        queueMicrotask(() => {
+          adminBarCheckPending = false;
+          if (!adminActions.isConnected ||
+              !adminActions.closest('#htsport-script-status-v308')) {
+            attachAdminLinks();
+          }
+        });
       });
       adminBarObserver.observe(document.body, { childList: true, subtree: true });
     }
-    if (actions.isConnected && actions.parentElement?.dataset.htsportAdminHost === 'true') {
-      actions.classList.remove('hidden');
+    const slot = findOriginalStatusBarSlot();
+    if (!slot) {
+      adminActions.classList.add('hidden');
       return;
     }
-    const bar = findOriginalStatusBar();
-    if (!bar) return; // Never show a duplicate bar or cover the original one.
-    bar.dataset.htsportAdminHost = 'true';
-    bar.append(actions);
-    actions.classList.remove('hidden');
+    if (adminActions.parentElement !== slot) slot.append(adminActions);
+    adminActions.classList.remove('hidden');
   }
   function stream() {
     if (redirectTimer) clearTimeout(redirectTimer);
