@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const views = ['loading','setup','signin','pending','welcome','adminPasswordLogin'];
-  let account = null, redirectTimer = null;
+  let account = null, redirectTimer = null, adminBarObserver = null;
   function show(id) {
     views.forEach(v => $(v).classList.toggle('hidden', v !== id));
     $('gate').classList.remove('hidden');
@@ -36,14 +36,58 @@
     $('message').classList.add('hidden');
     Promise.resolve().then(task).catch(message).finally(() => button.disabled = false);
   }
+  // The original version/online/update bar is created by the existing
+  // HTSport userscript. We never replace, restyle, or recreate that bar.
+  // Insert admin-only links as a small flex item after its existing contents.
+  function findOriginalStatusBar() {
+    const roots = document.querySelectorAll('body *');
+    for (const node of roots) {
+      if (node.children.length || node.closest('#gate, #player, #adminActions')) continue;
+      const value = (node.textContent || '').trim();
+      if (!/script\\s*htsport\\s*attivo|htsport\\s*script\\s*attivo|htsport\\s*(?:online|attivo)|aggiorna\\s*script/i.test(value)) continue;
+      let parent = node;
+      for (let depth = 0; depth < 7 && parent && parent !== document.body; depth++, parent = parent.parentElement) {
+        if (parent.id === 'gate' || parent.id === 'player') break;
+        const size = parent.getBoundingClientRect();
+        if (!size.width || !size.height || size.height > 140) continue;
+        const position = getComputedStyle(parent).position;
+        if ((position === 'fixed' || position === 'sticky') && size.width > 180) return parent;
+        if (size.width >= Math.min(480, innerWidth * 0.72) && size.height <= 120) return parent;
+      }
+    }
+    return null;
+  }
+  function attachAdminLinks() {
+    const actions = $('adminActions');
+    if (!account || account.role !== 'admin' || account.status !== 'active') {
+      actions.classList.add('hidden');
+      if (adminBarObserver) { adminBarObserver.disconnect(); adminBarObserver = null; }
+      return;
+    }
+    // The script can rebuild its status bar after an update; follow it.
+    if (!adminBarObserver) {
+      adminBarObserver = new MutationObserver(() => {
+        if (!actions.isConnected || actions.parentElement?.dataset.htsportAdminHost !== 'true') attachAdminLinks();
+      });
+      adminBarObserver.observe(document.body, { childList: true, subtree: true });
+    }
+    if (actions.isConnected && actions.parentElement?.dataset.htsportAdminHost === 'true') {
+      actions.classList.remove('hidden');
+      return;
+    }
+    const bar = findOriginalStatusBar();
+    if (!bar) return; // Never show a duplicate bar or cover the original one.
+    bar.dataset.htsportAdminHost = 'true';
+    bar.append(actions);
+    actions.classList.remove('hidden');
+  }
   function stream() {
     if (redirectTimer) clearTimeout(redirectTimer);
     if (!account || account.status !== 'active') return;
     $('gate').classList.add('hidden');
     $('player').classList.remove('hidden');
-    $('userLabel').textContent = 'Benvenuto, ' + account.username;
-    $('adminLink').classList.toggle('hidden', account.role !== 'admin');
     $('installLink').href = HTAuth.installUrl;
+    attachAdminLinks();
     if (!$('htsport-frame')) {
       const frame = document.createElement('iframe');
       frame.id = 'htsport-frame'; frame.title = 'HTSport';
@@ -57,6 +101,7 @@
   }
   function afterAuth(u, checked = false) {
     account = u;
+    if (u.status !== 'active' || u.role !== 'admin') attachAdminLinks();
     if (u.status === 'banned') { HTAuth.setToken(''); show('signin'); message(Error('BANNED')); return; }
     if (u.status === 'pending') {
       $('pendingName').textContent = 'Utente: ' + u.username;
@@ -111,11 +156,11 @@
   });
   $('pendingLogout').addEventListener('click', async () => {
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
-    account = null; show('signin');
+    account = null; attachAdminLinks(); show('signin');
   });
   $('logoutBtn').addEventListener('click', async () => {
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
-    account = null; $('frameHost').replaceChildren(); show('signin');
+    account = null; attachAdminLinks(); $('frameHost').replaceChildren(); show('signin');
   });
   $('openAdminLoginBtn').addEventListener('click', () => {
     if (redirectTimer) { clearTimeout(redirectTimer); redirectTimer = null; }
