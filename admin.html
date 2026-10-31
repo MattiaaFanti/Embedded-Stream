@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080c14">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https:; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <title>HTSport · Licenze e dispositivi</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="adminAuth" class="gate">
+    <section class="panel">
+      <div class="brand"><span class="brandmark">H</span> HTSPORT <span class="subbrand">CONTROL CENTER</span></div>
+      <div id="adminLoading" class="pane"><div class="spinner"></div><h1>Verifica amministratore</h1><p>Controllo sessione e configurazione.</p></div>
+      <div id="adminLogin" class="pane hidden">
+        <div class="pill">ACCESSO RISERVATO</div>
+        <h1>Pannello di controllo</h1>
+        <p>Accedi con la Passkey dell'amministratore.</p>
+        <button id="adminLoginBtn" type="button" class="button primary">Accedi con Passkey</button>
+        <p class="hint">Nessuna password viene conservata in questa pagina.</p>
+      </div>
+      <div id="bootstrap" class="pane hidden">
+        <div class="pill">CONFIGURAZIONE INIZIALE</div>
+        <h1>Crea l'amministratore</h1>
+        <p>È consentita una sola attivazione iniziale. Il codice segreto deve essere configurato esclusivamente su Cloudflare.</p>
+        <form id="bootstrapForm">
+          <label for="bootstrapName">Nome amministratore</label>
+          <input id="bootstrapName" required maxlength="40" minlength="2" autocomplete="nickname" placeholder="Amministratore">
+          <label for="bootstrapSecret">Codice bootstrap di Cloudflare</label>
+          <input id="bootstrapSecret" required type="password" autocomplete="off" placeholder="Codice segreto">
+          <button class="button primary" type="submit">Crea Passkey amministratore</button>
+        </form>
+      </div>
+      <div id="adminSetup" class="pane hidden"><h1>Server non configurato</h1><p>Distribuire prima il Worker e impostare l'indirizzo in <code>config.js</code>.</p></div>
+      <p id="adminError" class="message hidden" role="alert"></p>
+      <footer class="foot"><a href="index.html">Torna a HTSport</a></footer>
+    </section>
+  </main>
+
+  <section id="dashboard" class="admin hidden">
+    <header class="adminhead">
+      <div><div class="brand"><span class="brandmark">H</span> HTSPORT <span class="subbrand">ADMIN</span></div><p id="adminName" class="hint"></p></div>
+      <nav><a href="index.html">Apri il sito</a><button id="refreshBtn" class="smallbtn" type="button">Aggiorna</button><button id="adminLogoutBtn" class="smallbtn warn" type="button">Esci</button></nav>
+    </header>
+    <div id="stats" class="statrow"></div>
+    <div class="tabs">
+      <button class="tab active" data-tab="users" type="button">Utenti</button>
+      <button class="tab" data-tab="devices" type="button">Passkey / dispositivi</button>
+      <button class="tab" data-tab="licenses" type="button">Licenze e seriali</button>
+      <button class="tab" data-tab="audit" type="button">Registro attività</button>
+    </div>
+    <section id="tab-users" class="box">
+      <h2>Autorizzazioni e ban</h2>
+      <p>Le nuove registrazioni rimangono in attesa. Un ban impedisce il ripristino delle sessioni e qualsiasi nuovo accesso con la Passkey associata.</p>
+      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>ID registrazione</th><th>Stato</th><th>Passkey</th><th>Ultimo accesso</th><th>Azioni</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+    </section>
+    <section id="tab-devices" class="box hidden">
+      <h2>Credenziali registrate</h2>
+      <p>La revoca disabilita una singola Passkey. Le Passkey sincronizzate non identificano in modo certo un singolo hardware.</p>
+      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>ID Passkey</th><th>Tipo</th><th>Ultimo uso</th><th>Stato</th><th>Azione</th></tr></thead><tbody id="devicesBody"></tbody></table></div>
+    </section>
+    <section id="tab-licenses" class="hidden">
+      <div class="box">
+        <h2>Archivio cifrato di licenze e seriali</h2>
+        <p>I numeri seriali e le note sono cifrati sul server con AES-GCM. Il database non contiene i valori in chiaro.</p>
+        <form id="licenseForm">
+          <div class="formgrid">
+            <div><label for="product">Prodotto / licenza</label><input id="product" required maxlength="120" placeholder="Nome software"></div>
+            <div><label for="serial">Codice seriale</label><input id="serial" required maxlength="4000" autocomplete="off" placeholder="XXXX-XXXX-XXXX"></div>
+            <div><label for="assignedUser">Assegnata a</label><select id="assignedUser"><option value="">Non assegnata</option></select></div>
+            <div><label for="expiresOn">Scadenza</label><input id="expiresOn" type="date"></div>
+            <div><label for="licenseStatus">Stato</label><select id="licenseStatus"><option value="active">Attiva</option><option value="revoked">Revocata</option></select></div>
+            <div class="wide"><label for="licenseNotes">Note riservate</label><textarea id="licenseNotes" rows="2" maxlength="4000"></textarea></div>
+          </div>
+          <div class="inlineform"><button class="button primary" id="saveLicenseBtn" type="submit">Salva licenza</button><button class="button secondary" id="clearLicenseBtn" type="button">Nuova licenza</button></div>
+        </form>
+      </div>
+      <div class="box">
+        <h2>Licenze registrate</h2>
+        <div class="tablewrap"><table><thead><tr><th>Prodotto</th><th>Seriale</th><th>Assegnata a</th><th>Scadenza</th><th>Stato</th><th>Azioni</th></tr></thead><tbody id="licensesBody"></tbody></table></div>
+      </div>
+    </section>
+    <section id="tab-audit" class="box hidden"><h2>Ultime 100 attività</h2><div class="tablewrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Riferimento</th></tr></thead><tbody id="auditBody"></tbody></table></div></section>
+    <p class="message hidden" id="dashboardMessage" role="alert"></p>
+  </section>
+
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
