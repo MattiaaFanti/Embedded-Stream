@@ -66,18 +66,17 @@
     </section>
   </main>
   <section id="player" class="player hidden">
-    <header class="toolbar">
-      <div class="titlegroup"><strong>HTSport</strong> <span id="userLabel"></span></div>
-      <nav>
-        <a id="installLink" href="https://hattrick-player-control.yaboyo95.workers.dev/" target="_blank" rel="noopener">Guida</a>
-        <a href="admin.html" id="adminLink" class="hidden">Pannello</a>
-        <button id="logoutBtn" type="button">Esci</button>
-      </nav>
-    </header>
     <div id="frameHost" class="framehost"></div>
   </section>
+  <!-- I link amministratore sono spostati nella barra originale dello userscript.
+       Nessun secondo header viene mostrato, e gli utenti normali non vedono questi link. -->
+  <nav id="adminActions" class="admin-bar-actions hidden" aria-label="Comandi amministratore">
+    <a id="installLink" href="https://hattrick-player-control.yaboyo95.workers.dev/" target="_blank" rel="noopener">Guida</a>
+    <a id="adminLink" href="admin.html">Pannello</a>
+    <button id="logoutBtn" type="button">Esci</button>
+  </nav>
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js?v=20261031-adminpw1"></script>
-  <script src="site.js?v=20261031-adminpw1"></script>
+  <script src="site.js?v=20261101-adminbar2"></script>
 </body>
 </html>
