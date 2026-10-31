@@ -67,7 +67,8 @@
   // browser has a cached frontend version. This fails closed until deployment.
   async function requireCurrentRegistrationWorker() {
     const status = await call('/api/health');
-    if (status.version !== '1.3.0') throw Error('WORKER_UPDATE_REQUIRED');
+    const v = /^1\\.(\\d+)\\.\\d+$/.exec(String(status.version || ''));
+    if (!v || Number(v[1]) < 3) throw Error('WORKER_UPDATE_REQUIRED');
   }
   // If the authenticator holds a credential registered with *any* username,
   // verify it with the Worker and reject a second account instead of
