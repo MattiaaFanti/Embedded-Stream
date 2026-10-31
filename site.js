@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
-  const views = ['loading','setup','signin','pending','welcome'];
+  const views = ['loading','setup','signin','pending','welcome','adminPasswordLogin'];
   let account = null, redirectTimer = null;
   function show(id) {
     views.forEach(v => $(v).classList.toggle('hidden', v !== id));
@@ -22,7 +22,10 @@
       WORKER_UPDATE_REQUIRED: 'Registrazioni temporaneamente bloccate: il Worker Cloudflare non ha ancora la versione 1.3.0. Aggiorna il Worker prima di riprovare.',
       REGISTRATION_FAILED: 'Registrazione non riuscita. Non è stato creato alcun nuovo account.',
       REGISTRATION_CAPACITY_REACHED: 'Il numero massimo di registrazioni è stato raggiunto. Contatta l’amministratore.',
-      RATE_LIMIT: 'Troppe richieste. Riprova più tardi.'
+      RATE_LIMIT: 'Troppi tentativi. Riprova più tardi.',
+      INVALID_ADMIN_CREDENTIALS: 'Password amministratore errata.',
+      ADMIN_PASSWORD_NOT_CONFIGURED: 'Password amministratore non configurata su Cloudflare.',
+      ADMIN_UNAVAILABLE: 'Amministratore non disponibile: contatta il proprietario del sito.'
     };
     $('message').textContent = m[error.message] || error.message || String(error);
     $('message').classList.remove('hidden');
@@ -113,6 +116,25 @@
   $('logoutBtn').addEventListener('click', async () => {
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     account = null; $('frameHost').replaceChildren(); show('signin');
+  });
+  $('openAdminLoginBtn').addEventListener('click', () => {
+    if (redirectTimer) { clearTimeout(redirectTimer); redirectTimer = null; }
+    show('adminPasswordLogin');
+  });
+  $('backToSiteBtn').addEventListener('click', () => { refresh(); });
+  $('siteAdminPasswordForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const submit = this.querySelector('button[type=submit]');
+    runButton(submit, async () => {
+      const input = $('siteAdminPassword');
+      const password = input.value;
+      try {
+        await HTAuth.loginAdminWithPassword(password);
+        location.assign('admin.html');
+      } finally {
+        input.value = '';
+      }
+    });
   });
   $('skipGuide').addEventListener('click', stream);
   refresh();
