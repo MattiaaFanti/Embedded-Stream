@@ -32,7 +32,7 @@
           <input id="username" name="username" type="text" autocomplete="nickname" minlength="2" maxlength="40" required placeholder="Scrivi il tuo nome">
           <button class="button secondary" type="submit">Richiedi registrazione con Passkey</button>
         </form>
-        <p class="hint">Prima della nuova registrazione verranno controllate le Passkey già presenti. Se l’account esiste, verrà riutilizzato. Solo l’amministratore può vedere l’identificativo di registrazione e autorizzare l’accesso.</p>
+        <p class="hint">La registrazione viene rifiutata se il nome è già utilizzato o se viene rilevata una Passkey già associata a un account. Solo l’amministratore può vedere il seriale di registrazione e approvare la richiesta.</p>
       </div>
       <div id="pending" class="pane hidden">
         <div class="pill">AUTORIZZAZIONE IN ATTESA</div>
@@ -65,7 +65,7 @@
     <div id="frameHost" class="framehost"></div>
   </section>
   <script src="config.js?v=20261031-1430"></script>
-  <script src="auth.js?v=20261031-dup2"></script>
-  <script src="site.js?v=20261031-dup2"></script>
+  <script src="auth.js?v=20261031-fix3"></script>
+  <script src="site.js?v=20261031-fix3"></script>
 </body>
 </html>
