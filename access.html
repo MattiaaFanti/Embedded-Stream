@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#080c14">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https:; frame-src https://htsport.info; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'">
-  <title>HTSport · Accesso separato</title>
+  <title>HTSport · Accesso protetto</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -26,18 +26,19 @@
         <h1>Accedi al tuo dispositivo</h1>
         <p>Se hai già registrato una passkey, accedi con Face ID, impronta digitale o PIN. Non serve una password.</p>
         <button id="signInBtn" class="button primary" type="button">Accedi con Passkey</button>
-        <div class="line"><span>PRIMO ACCESSO</span></div>
+        <div class="line"><span>PRIMA REGISTRAZIONE — RICHIESTA DI APPROVAZIONE</span></div>
         <form id="registerForm">
-          <label for="username">Nome utente</label>
-          <input id="username" name="username" type="text" autocomplete="nickname" minlength="2" maxlength="40" required placeholder="Inserisci il tuo nome">
-          <button class="button secondary" type="submit">Registra questo accesso</button>
+          <label for="username">Il tuo nome (visibile all’amministratore)</label>
+          <input id="username" name="username" type="text" autocomplete="nickname" minlength="2" maxlength="40" required placeholder="Scrivi il tuo nome">
+          <button class="button secondary" type="submit">Richiedi registrazione con Passkey</button>
         </form>
-        <p class="hint">Una nuova registrazione deve essere approvata dall'amministratore. La passkey può sincronizzarsi tra dispositivi: non è un numero hardware.</p>
+        <p class="hint">Il sistema assegna automaticamente un seriale di registrazione univoco. Potrai entrare solo dopo l’approvazione dell’amministratore. Una Passkey può essere sincronizzata su più dispositivi: il seriale non è un identificativo hardware.</p>
       </div>
       <div id="pending" class="pane hidden">
         <div class="pill">AUTORIZZAZIONE IN ATTESA</div>
         <h1>Registrazione ricevuta</h1>
         <p id="pendingName"></p>
+        <p id="pendingSerial" class="registration-serial"></p>
         <p>L'amministratore deve approvare l'accesso prima che tu possa aprire il sito.</p>
         <button class="button primary" id="pendingCheck" type="button">Controlla autorizzazione</button>
         <button class="button quiet" id="pendingLogout" type="button">Esci</button>
@@ -45,6 +46,7 @@
       <div id="welcome" class="pane hidden">
         <div class="pill">DISPOSITIVO AUTORIZZATO</div>
         <h1 id="welcomeTitle">Benvenuto</h1>
+        <p id="welcomeSerial" class="registration-serial"></p>
         <p>La verifica è riuscita. Apertura della guida d'installazione al primo accesso.</p>
         <button class="button secondary" id="skipGuide" type="button">Apri subito HTSport</button>
       </div>
@@ -65,6 +67,6 @@
   </section>
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js"></script>
-  <script src="site.js"></script>
+  <script src="site.js?v=20261031-serial1"></script>
 </body>
 </html>
