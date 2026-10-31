@@ -81,9 +81,9 @@ async function consume(env, requestId, purpose) {
   if (result.meta.changes !== 1) throw new Error('CHALLENGE_USED');
   return { expectedChallenge: row.challenge, ...JSON.parse(row.payload) };
 }
-async function issueSession(env, userId) {
+async function issueSession(env, userId, ttlSeconds = 7 * 86400) {
   const token = b64u(randomBytes(32));
-  const expiresAt = now() + 7 * 86400;
+  const expiresAt = now() + ttlSeconds;
   const hash = await sha(env.TOKEN_PEPPER + ':' + token);
   await env.DB.prepare('INSERT INTO sessions (id,user_id,token_hash,created_at,expires_at) VALUES (?,?,?,?,?)')
     .bind(uuid(), userId, hash, now(), expiresAt).run();
@@ -181,6 +181,19 @@ async function adminExists(env) {
   const row = await env.DB.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").first();
   return !!row;
 }
+// Password-only admin fallback for accessing the console from another device.
+// ADMIN_PASSWORD is a Cloudflare Secret, never committed to the website.
+async function adminPasswordValid(env, candidate) {
+  if (typeof candidate !== 'string' || candidate.length > 256) return false;
+  // Compare fixed-length SHA-256 digests without data-dependent early exit.
+  const digest = async value => new Uint8Array(await crypto.subtle.digest(
+    'SHA-256', enc.encode(env.TOKEN_PEPPER + ':admin-password:' + value)
+  ));
+  const [provided, expected] = await Promise.all([digest(candidate), digest(env.ADMIN_PASSWORD)]);
+  let difference = 0;
+  for (let i = 0; i < expected.length; i++) difference |= provided[i] ^ expected[i];
+  return difference === 0;
+}
 async function loginOptions(env) {
   const options = await generateAuthenticationOptions({
     rpID: env.RP_ID, userVerification: 'required',
@@ -223,7 +236,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.3.0' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.0' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -253,6 +266,21 @@ async function route(request, env) {
   if (method === 'POST' && path === '/api/login/verify') {
     const user = await verifyLogin(env, await readJSON(request));
     return ok({ ...user, ...(await issueSession(env, user.userId)) });
+  }
+  if (method === 'POST' && path === '/api/admin/password/login') {
+    // IP-scoped throttle. This is not sufficient protection for a weak password.
+    await rate(env, request, 'admin-password-login', 5, 3600);
+    if (!env.ADMIN_PASSWORD) return fail('ADMIN_PASSWORD_NOT_CONFIGURED', 503);
+    const body = await readJSON(request);
+    if (!(await adminPasswordValid(env, body.password))) return fail('INVALID_ADMIN_CREDENTIALS', 401);
+    const administrator = await env.DB.prepare(
+      "SELECT id,username,status FROM users WHERE role='admin' LIMIT 1"
+    ).first();
+    if (!administrator || administrator.status !== 'active') return fail('ADMIN_UNAVAILABLE', 403);
+    await env.DB.prepare('UPDATE users SET last_login_at=? WHERE id=?')
+      .bind(now(), administrator.id).run();
+    await audit(env, administrator.id, 'admin_password_login', administrator.id);
+    return ok({ username: administrator.username, role: 'admin', ...(await issueSession(env, administrator.id, 8 * 3600)) });
   }
   if (method === 'GET' && path === '/api/admin/bootstrap/status') return ok({ needed: !(await adminExists(env)) });
   if (method === 'POST' && path === '/api/admin/bootstrap/options') {
