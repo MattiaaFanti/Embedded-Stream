@@ -1,6 +1,19 @@
 # HTSport - Passkey e archivio licenze
 
-Questa implementazione è proposta nel branch feature/passkey-license-console. Non fare merge nella main prima della configurazione di Cloudflare: la nuova pagina index.html bloccherebbe il sito fino all'attivazione dell'API.
+Il sito principale reindirizza a `access.html`, dove l'utente usa la Passkey. Il Worker Cloudflare gestisce gli utenti e l'accesso amministratore. Il contenuto originale di `htsport.info` è un sito separato.
+
+## Login amministratore con password
+
+Oltre alla Passkey già registrata, l'amministratore può accedere da qualsiasi dispositivo tramite password.
+
+1. Cloudflare → Workers & Pages → `htsport-license-api` → Settings → Variables and Secrets.
+2. Aggiungere `ADMIN_PASSWORD` con **Type = Secret** e il valore scelto (non salvarlo in GitHub). L'utente ha inizialmente richiesto il valore `Admin`, estremamente facile da indovinare: è fortemente raccomandata una password lunga e unica.
+3. Salvare e applicare il deployment della versione Worker `1.4.0` (o successiva).
+4. Aprire `https://mattiaafanti.github.io/Embedded-Stream/access.html`, scegliere **Accesso amministratore**, inserire la password e entrare nel pannello. Lo stesso form è in `admin.html`.
+5. Il server limita i tentativi a 5/ora per IP, non salva la password nel frontend, registra gli accessi nel log e crea sessioni password di 8 ore.
+6. Se `ADMIN_PASSWORD` manca, la risposta è `ADMIN_PASSWORD_NOT_CONFIGURED`. Non usare `BOOTSTRAP_SECRET` in sua sostituzione.
+
+L'autenticazione con la Passkey amministratore continua a funzionare. Un solo fattore con password `Admin` non garantisce una protezione adeguata per un pannello pubblico.
 
 ## Componenti
 
@@ -89,6 +102,7 @@ POST /api/logout
 GET /api/admin/bootstrap/status
 POST /api/admin/bootstrap/options
 POST /api/admin/bootstrap/verify
+POST /api/admin/password/login
 GET /api/admin/summary
 GET /api/admin/users
 GET /api/admin/credentials
