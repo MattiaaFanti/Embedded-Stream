@@ -18,7 +18,9 @@
       DEVICE_REVOKED_OR_UNKNOWN: 'Passkey revocata oppure non registrata.',
       PASSKEY_INVALID: 'Autenticazione non valida. Riprova.',
       PASSKEY_ALREADY_REGISTERED: 'Questa Passkey è già registrata. Usa Accedi con Passkey anziché creare un altro account.',
-      USERNAME_ALREADY_REGISTERED: 'Questo nome è già registrato. Se l’account è tuo, usa Accedi con Passkey.',
+      USERNAME_ALREADY_REGISTERED: 'Nome utente già registrato. Scegli un altro nome oppure accedi con la tua Passkey.',
+      WORKER_UPDATE_REQUIRED: 'Registrazioni temporaneamente bloccate: il Worker Cloudflare non ha ancora la versione 1.3.0. Aggiorna il Worker prima di riprovare.',
+      REGISTRATION_FAILED: 'Registrazione non riuscita. Non è stato creato alcun nuovo account.',
       REGISTRATION_CAPACITY_REACHED: 'Il numero massimo di registrazioni è stato raggiunto. Contatta l’amministratore.',
       RATE_LIMIT: 'Troppe richieste. Riprova più tardi.'
     };
@@ -92,10 +94,6 @@
     runButton(b, async () => {
       const username = $('username').value.trim();
       const result = await HTAuth.register(username);
-      if (result.existing) {
-        await refresh();
-        return;
-      }
       account = result;
       $('pendingName').textContent = 'Utente: ' + result.username;
       show('pending');
