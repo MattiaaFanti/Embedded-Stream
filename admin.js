@@ -87,7 +87,7 @@
     state.users.forEach(u => {
       const row = document.createElement('tr');
       td(row, u.username + (u.role === 'admin' ? ' (admin)' : ''));
-      td(row, u.id, true); statusCell(row, u.status);
+      td(row, u.registrationSerial || u.id, true); statusCell(row, u.status);
       td(row, u.credentials); td(row, date(u.last_login_at));
       const actions = document.createElement('td'); row.append(actions);
       if (u.role !== 'admin') {
