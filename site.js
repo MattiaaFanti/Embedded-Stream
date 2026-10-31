@@ -18,6 +18,8 @@
       DEVICE_REVOKED_OR_UNKNOWN: 'Passkey revocata oppure non registrata.',
       PASSKEY_INVALID: 'Autenticazione non valida. Riprova.',
       PASSKEY_ALREADY_REGISTERED: 'Questa Passkey è già registrata. Usa Accedi con Passkey anziché creare un altro account.',
+      USERNAME_ALREADY_REGISTERED: 'Questo nome è già registrato. Se l’account è tuo, usa Accedi con Passkey.',
+      REGISTRATION_CAPACITY_REACHED: 'Il numero massimo di registrazioni è stato raggiunto. Contatta l’amministratore.',
       RATE_LIMIT: 'Troppe richieste. Riprova più tardi.'
     };
     $('message').textContent = m[error.message] || error.message || String(error);
@@ -48,13 +50,14 @@
       $('frameHost').append(frame);
     }
   }
-  function afterAuth(u) {
+  function afterAuth(u, checked = false) {
     account = u;
     if (u.status === 'banned') { HTAuth.setToken(''); show('signin'); message(Error('BANNED')); return; }
     if (u.status === 'pending') {
       $('pendingName').textContent = 'Utente: ' + u.username;
-      $('pendingSerial').textContent = 'Seriale registrazione: ' + (u.registrationSerial || 'in elaborazione');
       show('pending');
+      $('pendingFeedback').classList.toggle('hidden', !checked);
+      if (checked) $('pendingFeedback').textContent = 'L’amministratore non ha ancora approvato la tua registrazione.';
       return;
     }
     if (u.status !== 'active') { show('signin'); return; }
@@ -62,17 +65,16 @@
     if (!localStorage.getItem(key)) {
       localStorage.setItem(key, '1');
       $('welcomeTitle').textContent = 'Benvenuto, ' + u.username;
-      $('welcomeSerial').textContent = 'Seriale registrazione: ' + (u.registrationSerial || '—');
       show('welcome');
       redirectTimer = setTimeout(() => location.assign(HTAuth.installUrl), 1500);
     } else stream();
   }
-  async function refresh() {
+  async function refresh(checked = false) {
     if (!HTAuth.ready) { show('setup'); return; }
     if (!HTAuth.getToken()) { show('signin'); return; }
     try {
       const u = await HTAuth.call('/api/me');
-      afterAuth(u);
+      afterAuth(u, checked);
     } catch (e) {
       if (e.message === 'LOGIN_REQUIRED' || e.message === 'BANNED') {
         HTAuth.setToken('');
@@ -90,16 +92,20 @@
     runButton(b, async () => {
       const username = $('username').value.trim();
       const result = await HTAuth.register(username);
+      if (result.existing) {
+        await refresh();
+        return;
+      }
       account = result;
       $('pendingName').textContent = 'Utente: ' + result.username;
-      $('pendingSerial').textContent = 'Seriale registrazione: ' + (result.registrationSerial || 'in elaborazione');
       show('pending');
+      $('pendingFeedback').classList.add('hidden');
     });
   });
   $('pendingCheck').addEventListener('click', function () {
     runButton(this, async () => {
       if (!HTAuth.getToken()) await HTAuth.login();
-      await refresh();
+      await refresh(true);
     });
   });
   $('pendingLogout').addEventListener('click', async () => {
