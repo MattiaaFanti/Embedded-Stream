@@ -152,17 +152,30 @@ async function verifyRegistration(env, body, purpose) {
 }
 async function insertRegistration(env, username, role, status, info, userId) {
   const cred = info.credential;
-  // D1 ha anche una PRIMARY KEY su credentials.id: la stessa Passkey
-  // non puo' essere assegnata a due utenti diversi.
   const used = await env.DB.prepare('SELECT id FROM credentials WHERE id=?').bind(cred.id).first();
   if (used) throw new Error('PASSKEY_ALREADY_REGISTERED');
-  await env.DB.batch([
-    env.DB.prepare('INSERT INTO users (id,username,role,status,created_at,updated_at) VALUES (?,?,?,?,?,?)')
-      .bind(userId, username, role, status, now(), now()),
-    env.DB.prepare('INSERT INTO credentials (id,user_id,public_key,counter,transports,device_type,backed_up,created_at) VALUES (?,?,?,?,?,?,?,?)')
+  const timestamp = now();
+  // The username check is inside the INSERT statement: the database, not the
+  // browser, makes the final decision. D1 batch executes these atomically.
+  const userInsert = role === 'user'
+    ? env.DB.prepare(`INSERT INTO users (id,username,role,status,created_at,updated_at)
+        SELECT ?,?,?,?,?,?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM users
+          WHERE role='user' AND lower(trim(username))=lower(trim(?))
+        )`).bind(userId, username, role, status, timestamp, timestamp, username)
+    : env.DB.prepare('INSERT INTO users (id,username,role,status,created_at,updated_at) VALUES (?,?,?,?,?,?)')
+      .bind(userId, username, role, status, timestamp, timestamp);
+  const result = await env.DB.batch([
+    userInsert,
+    env.DB.prepare(`INSERT INTO credentials (id,user_id,public_key,counter,transports,device_type,backed_up,created_at)
+      SELECT ?,?,?,?,?,?,?,?
+      WHERE EXISTS (SELECT 1 FROM users WHERE id=?)`)
       .bind(cred.id, userId, b64u(cred.publicKey), cred.counter, JSON.stringify(cred.transports || []),
-        info.credentialDeviceType || '', info.credentialBackedUp ? 1 : 0, now())
+        info.credentialDeviceType || '', info.credentialBackedUp ? 1 : 0, timestamp, userId)
   ]);
+  if (result[0].meta.changes !== 1) throw new Error('USERNAME_ALREADY_REGISTERED');
+  if (result[1].meta.changes !== 1) throw new Error('REGISTRATION_FAILED');
 }
 async function adminExists(env) {
   const row = await env.DB.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").first();
@@ -210,7 +223,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.2.0' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.3.0' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -368,7 +381,7 @@ export default {
       }
     } catch (err) {
       const message = err && err.message || 'SERVER_ERROR';
-      const recognized = /^(LOGIN_REQUIRED|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|USERNAME_ALREADY_REGISTERED|REGISTRATION_CAPACITY_REACHED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
+      const recognized = /^(LOGIN_REQUIRED|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|USERNAME_ALREADY_REGISTERED|REGISTRATION_FAILED|REGISTRATION_CAPACITY_REACHED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
       const status = message === 'RATE_LIMIT' ? 429 :
         message === 'LOGIN_REQUIRED' ? 401 :
         ['BANNED','ADMIN_REQUIRED','DEVICE_REVOKED_OR_UNKNOWN'].includes(message) ? 403 :
