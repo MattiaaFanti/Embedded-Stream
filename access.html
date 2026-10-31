@@ -32,21 +32,20 @@
           <input id="username" name="username" type="text" autocomplete="nickname" minlength="2" maxlength="40" required placeholder="Scrivi il tuo nome">
           <button class="button secondary" type="submit">Richiedi registrazione con Passkey</button>
         </form>
-        <p class="hint">Il sistema assegna automaticamente un seriale di registrazione univoco. Potrai entrare solo dopo l’approvazione dell’amministratore. Una Passkey può essere sincronizzata su più dispositivi: il seriale non è un identificativo hardware.</p>
+        <p class="hint">Prima della nuova registrazione verranno controllate le Passkey già presenti. Se l’account esiste, verrà riutilizzato. Solo l’amministratore può vedere l’identificativo di registrazione e autorizzare l’accesso.</p>
       </div>
       <div id="pending" class="pane hidden">
         <div class="pill">AUTORIZZAZIONE IN ATTESA</div>
         <h1>Registrazione ricevuta</h1>
         <p id="pendingName"></p>
-        <p id="pendingSerial" class="registration-serial"></p>
         <p>L'amministratore deve approvare l'accesso prima che tu possa aprire il sito.</p>
+        <p id="pendingFeedback" class="approval-feedback hidden" role="status" aria-live="polite"></p>
         <button class="button primary" id="pendingCheck" type="button">Controlla autorizzazione</button>
         <button class="button quiet" id="pendingLogout" type="button">Esci</button>
       </div>
       <div id="welcome" class="pane hidden">
         <div class="pill">DISPOSITIVO AUTORIZZATO</div>
         <h1 id="welcomeTitle">Benvenuto</h1>
-        <p id="welcomeSerial" class="registration-serial"></p>
         <p>La verifica è riuscita. Apertura della guida d'installazione al primo accesso.</p>
         <button class="button secondary" id="skipGuide" type="button">Apri subito HTSport</button>
       </div>
@@ -66,7 +65,7 @@
     <div id="frameHost" class="framehost"></div>
   </section>
   <script src="config.js?v=20261031-1430"></script>
-  <script src="auth.js"></script>
-  <script src="site.js?v=20261031-serial1"></script>
+  <script src="auth.js?v=20261031-dup2"></script>
+  <script src="site.js?v=20261031-dup2"></script>
 </body>
 </html>
