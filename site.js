@@ -40,22 +40,23 @@
   // HTSport userscript. We never replace, restyle, or recreate that bar.
   // Insert admin-only links as a small flex item after its existing contents.
   function findOriginalStatusBar() {
-    const roots = document.querySelectorAll('body *');
-    for (const node of roots) {
-      if (node.children.length || node.closest('#gate, #player, #adminActions')) continue;
-      const value = (node.textContent || '').trim();
-      if (!/script\s*htsport\s*attivo|htsport\s*script\s*attivo|htsport\s*(?:online|attivo)|aggiorna\s*script/i.test(value)) continue;
-      let parent = node;
-      for (let depth = 0; depth < 7 && parent && parent !== document.body; depth++, parent = parent.parentElement) {
-        if (parent.id === 'gate' || parent.id === 'player') break;
-        const size = parent.getBoundingClientRect();
-        if (!size.width || !size.height || size.height > 140) continue;
-        const position = getComputedStyle(parent).position;
-        if ((position === 'fixed' || position === 'sticky') && size.width > 180) return parent;
-        if (size.width >= Math.min(480, innerWidth * 0.72) && size.height <= 120) return parent;
-      }
+    // Look for the userscript's actual banner, not the HTSport site header.
+    // Check whole containers: the words "HTSport", "attivo", and the
+    // version/upgrade controls may be split among several child spans.
+    const marker = /script\s*htsport\s*attivo|htsport\s*script\s*attivo|htsport.{0,70}(?:online|attivo|versione|v\d)|aggiorna\s*script/i;
+    let fallback = null;
+    for (const node of document.querySelectorAll('body *')) {
+      if (node.closest('#gate, #adminActions')) continue;
+      const text = (node.textContent || '').trim();
+      if (text.length > 500 || !marker.test(text)) continue;
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 180 || rect.height < 8 || rect.height > 140) continue;
+      const pos = getComputedStyle(node).position;
+      if (pos === 'fixed' || pos === 'sticky') return node;
+      // Original status bars embedded in the page may be static.
+      if (!fallback && rect.width >= Math.min(480, innerWidth * 0.72)) fallback = node;
     }
-    return null;
+    return fallback;
   }
   function attachAdminLinks() {
     const actions = $('adminActions');
