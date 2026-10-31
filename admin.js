@@ -98,6 +98,20 @@
         if (u.status !== 'banned') button(actions, 'Banna', () => changeUser(u.id, 'banned'), true);
         if (u.status === 'active') button(actions, 'Sospendi', () => changeUser(u.id, 'pending'));
       }
+      const deleteCell = document.createElement('td');
+      deleteCell.className = 'user-delete-cell';
+      row.append(deleteCell);
+      if (u.role !== 'admin') {
+        const remove = button(deleteCell, '×', async () => {
+          if (!confirm('Eliminare definitivamente l’utente "' + u.username +
+            '"? Verranno eliminate anche le sue Passkey e sessioni. Le licenze rimarranno non assegnate.')) return;
+          await HTAuth.call('/api/admin/users/' + encodeURIComponent(u.id) + '/delete', {});
+          await load();
+        }, true);
+        remove.classList.add('delete-user-btn');
+        remove.setAttribute('aria-label', 'Elimina definitivamente ' + u.username);
+        remove.title = 'Elimina definitivamente ' + u.username;
+      }
       body.append(row);
     });
   }
