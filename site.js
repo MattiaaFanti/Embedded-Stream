@@ -67,10 +67,8 @@
         adminBarCheckPending = true;
         queueMicrotask(() => {
           adminBarCheckPending = false;
-          if (!adminActions.isConnected ||
-              !adminActions.closest('#htsport-script-status-v308')) {
-            attachAdminLinks();
-          }
+          const slot = findOriginalStatusBarSlot();
+          if (slot && adminActions.parentElement !== slot) attachAdminLinks();
         });
       });
       adminBarObserver.observe(document.body, { childList: true, subtree: true });
