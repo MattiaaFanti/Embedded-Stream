@@ -17,6 +17,7 @@
       PASSKEY_NOT_SUPPORTED: 'Questo browser non supporta le Passkey richieste.',
       DEVICE_REVOKED_OR_UNKNOWN: 'Passkey revocata oppure non registrata.',
       PASSKEY_INVALID: 'Autenticazione non valida. Riprova.',
+      PASSKEY_ALREADY_REGISTERED: 'Questa Passkey è già registrata. Usa Accedi con Passkey anziché creare un altro account.',
       RATE_LIMIT: 'Troppe richieste. Riprova più tardi.'
     };
     $('message').textContent = m[error.message] || error.message || String(error);
@@ -52,6 +53,7 @@
     if (u.status === 'banned') { HTAuth.setToken(''); show('signin'); message(Error('BANNED')); return; }
     if (u.status === 'pending') {
       $('pendingName').textContent = 'Utente: ' + u.username;
+      $('pendingSerial').textContent = 'Seriale registrazione: ' + (u.registrationSerial || 'in elaborazione');
       show('pending');
       return;
     }
@@ -60,6 +62,7 @@
     if (!localStorage.getItem(key)) {
       localStorage.setItem(key, '1');
       $('welcomeTitle').textContent = 'Benvenuto, ' + u.username;
+      $('welcomeSerial').textContent = 'Seriale registrazione: ' + (u.registrationSerial || '—');
       show('welcome');
       redirectTimer = setTimeout(() => location.assign(HTAuth.installUrl), 1500);
     } else stream();
@@ -89,6 +92,7 @@
       const result = await HTAuth.register(username);
       account = result;
       $('pendingName').textContent = 'Utente: ' + result.username;
+      $('pendingSerial').textContent = 'Seriale registrazione: ' + (result.registrationSerial || 'in elaborazione');
       show('pending');
     });
   });
