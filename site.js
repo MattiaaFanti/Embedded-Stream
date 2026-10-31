@@ -50,7 +50,11 @@
   let barSyncScheduled = false;
   function externalScriptBar() {
     const node = document.getElementById('htsport-script-status-v308');
-    return node && node !== nativeBar && !nativeBar.contains(node) ? node : null;
+    if (!node || node === nativeBar || nativeBar.contains(node)) return null;
+    // Un contenitore presente ma nascosto non deve nascondere la barra nativa.
+    if (!node.isConnected || !node.getClientRects().length ||
+        getComputedStyle(node).visibility === 'hidden') return null;
+    return node;
   }
   function syncStatusBar() {
     const external = externalScriptBar();
