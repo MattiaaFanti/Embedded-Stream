@@ -27,10 +27,10 @@
         <p>Se hai già registrato una passkey, accedi con Face ID, impronta digitale o PIN. Non serve una password.</p>
         <button id="signInBtn" class="button primary" type="button">Accedi con Passkey</button>
         <div class="line"><span>PRIMA REGISTRAZIONE — RICHIESTA DI APPROVAZIONE</span></div>
-        <form id="registerForm">
+        <form id="registerForm" novalidate>
           <label for="username">Il tuo nome (visibile all’amministratore)</label>
-          <input id="username" name="username" type="text" autocomplete="nickname" minlength="2" maxlength="40" required placeholder="Scrivi il tuo nome">
-          <button class="button secondary" type="submit">Richiedi registrazione con Passkey</button>
+          <input id="username" name="username" type="text" autocomplete="nickname" maxlength="40" required placeholder="Scrivi il tuo nome">
+          <button id="registerBtn" class="button secondary" type="button">Richiedi registrazione con Passkey</button>
           <p id="registerStatus" class="registration-status hidden" role="status" aria-live="polite"></p>
         </form>
         <p class="hint">La registrazione viene rifiutata se il nome è già utilizzato o se viene rilevata una Passkey già associata a un account. Solo l’amministratore può vedere il seriale di registrazione e approvare la richiesta.</p>
@@ -86,7 +86,7 @@
     <div id="frameHost" class="framehost"></div>
   </section>
   <script src="config.js?v=20261031-1430"></script>
-  <script src="auth.js?v=20261101-registerfix1"></script>
-  <script src="site.js?v=20261101-registerfix1"></script>
+  <script src="auth.js?v=20261101-registerfix2"></script>
+  <script src="site.js?v=20261101-registerfix2"></script>
 </body>
 </html>
