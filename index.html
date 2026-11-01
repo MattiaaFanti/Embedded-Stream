@@ -25,6 +25,8 @@
         <div class="pill">ACCESSO CON PASSKEY</div>
         <h1>Accedi al tuo dispositivo</h1>
         <p>Se hai già registrato una passkey, accedi con Face ID, impronta digitale o PIN. Non serve una password.</p>
+        <label for="signInUsername">Nome utente (facoltativo, utile dopo una nuova registrazione)</label>
+        <input id="signInUsername" name="signInUsername" type="text" autocomplete="username" maxlength="40" placeholder="Nome dell’account approvato">
         <button id="signInBtn" class="button primary" type="button">Accedi con Passkey</button>
         <div class="line"><span>PRIMA REGISTRAZIONE — RICHIESTA DI APPROVAZIONE</span></div>
         <form id="registerForm" novalidate>
@@ -86,7 +88,7 @@
     <div id="frameHost" class="framehost"></div>
   </section>
   <script src="config.js?v=20261031-1430"></script>
-  <script src="auth.js?v=20261101-reenroll1"></script>
-  <script src="site.js?v=20261101-reenroll1"></script>
+  <script src="auth.js?v=20261101-approval2"></script>
+  <script src="site.js?v=20261101-approval2"></script>
 </body>
 </html>
