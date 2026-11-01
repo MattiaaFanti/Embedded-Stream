@@ -184,9 +184,9 @@
   }
   function startPresence() {
     if (!account || account.role !== 'user' || account.status !== 'active') return;
-    // Every 10 seconds while HTSport stays open, including multi-hour streams.
+    // Every 20 seconds while HTSport stays open, including multi-hour streams.
     // Never tie presence to clicks, page navigation or playback events.
-    if (!presenceTimer) presenceTimer = setInterval(() => { void presenceBeat(); }, 10000);
+    if (!presenceTimer) presenceTimer = setInterval(() => { void presenceBeat(); }, 20000);
     void presenceBeat();
   }
   async function stopPresence() {
