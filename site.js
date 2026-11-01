@@ -187,14 +187,42 @@
   $('signInBtn').addEventListener('click', function () {
     runButton(this, async () => { await HTAuth.login(); await refresh(); });
   });
-  $('registerForm').addEventListener('submit', function (event) {
-    event.preventDefault();
-    const b = this.querySelector('button[type="submit"]');
+  // Use a direct click handler: native HTML constraint validation must
+  // never silently suppress the first step of a Passkey signup.
+  let registrationInProgress = false;
+  async function requestRegistration() {
+    const button = $('registerBtn');
     const status = $('registerStatus');
+    const username = $('username').value.trim().replace(/\s+/g, ' ');
     status.classList.remove('hidden', 'registration-error');
+    $('message').classList.add('hidden');
+    if (registrationInProgress) {
+      status.textContent = 'Registrazione già avviata. Completa la richiesta Passkey sul dispositivo.';
+      return;
+    }
+    if (username.length < 2 || username.length > 40 || /[<>\\]/.test(username)) {
+      status.textContent = 'Inserisci un nome valido da 2 a 40 caratteri.';
+      status.classList.add('registration-error');
+      $('username').focus();
+      return;
+    }
+    if (!HTAuth.ready) {
+      status.textContent = 'Server Cloudflare non configurato.';
+      status.classList.add('registration-error');
+      return;
+    }
+    if (!HTAuth.supported()) {
+      status.textContent = 'Questo browser o dispositivo non supporta le Passkey. Apri il sito in un browser aggiornato con supporto WebAuthn.';
+      status.classList.add('registration-error');
+      return;
+    }
+    registrationInProgress = true;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    const defaultLabel = 'Richiedi registrazione con Passkey';
+    button.textContent = 'Registrazione in corso...';
     status.textContent = 'Avvio della registrazione...';
-    runButton(b, async () => {
-      const username = $('username').value.trim();
+    try {
       const result = await HTAuth.register(username, undefined, step => {
         status.textContent = step;
       });
@@ -202,10 +230,20 @@
       $('pendingName').textContent = 'Utente: ' + result.username;
       show('pending');
       $('pendingFeedback').classList.add('hidden');
-    }, error => {
-      status.textContent = readableError(error);
+    } catch (e) {
+      status.textContent = readableError(e);
       status.classList.add('registration-error');
-    });
+    } finally {
+      registrationInProgress = false;
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      button.textContent = defaultLabel;
+    }
+  }
+  $('registerBtn').addEventListener('click', () => { void requestRegistration(); });
+  $('registerForm').addEventListener('submit', event => {
+    event.preventDefault();
+    void requestRegistration();
   });
   $('pendingCheck').addEventListener('click', function () {
     runButton(this, async () => {
