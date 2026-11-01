@@ -105,8 +105,9 @@
     progress('Registrazione inviata.');
     return saved;
   }
-  async function login() {
-    const result = await call('/api/login/options', {});
+  async function login(username) {
+    const scopedName = typeof username === 'string' ? username.trim().replace(/\s+/g, ' ') : '';
+    const result = await call('/api/login/options', scopedName ? { username: scopedName } : {});
     const credential = await getCredential(result.options);
     let saved;
     try {
