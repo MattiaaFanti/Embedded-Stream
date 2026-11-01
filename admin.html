@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#080c14">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https:; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'">
-  <title>HTSport · Licenze e dispositivi</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; connect-src https:; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <title>Sport · Licenze e dispositivi</title>
   <link rel="stylesheet" href="style.css?v=20261101-presence1">
 </head>
 <body>
   <main id="adminAuth" class="gate">
     <section class="panel">
-      <div class="brand"><span class="brandmark">H</span> HTSPORT <span class="subbrand">CONTROL CENTER</span></div>
+      <div class="brand"><span class="brandmark">H</span> SPORT <span class="subbrand">CONTROL CENTER</span></div>
       <div id="adminLoading" class="pane"><div class="spinner"></div><h1>Verifica amministratore</h1><p>Controllo sessione e configurazione.</p></div>
       <div id="adminLogin" class="pane hidden">
         <div class="pill">ACCESSO RISERVATO</div>
@@ -40,13 +40,13 @@
       </div>
       <div id="adminSetup" class="pane hidden"><h1>Server non configurato</h1><p>Distribuire prima il Worker e impostare l'indirizzo in <code>config.js</code>.</p></div>
       <p id="adminError" class="message hidden" role="alert"></p>
-      <footer class="foot"><a href="index.html">Torna a HTSport</a></footer>
+      <footer class="foot"><a href="index.html">Torna a Sport</a></footer>
     </section>
   </main>
 
   <section id="dashboard" class="admin hidden">
     <header class="adminhead">
-      <div><div class="brand"><span class="brandmark">H</span> HTSPORT <span class="subbrand">ADMIN</span></div><p id="adminName" class="hint"></p></div>
+      <div><div class="brand"><span class="brandmark">H</span> SPORT <span class="subbrand">ADMIN</span></div><p id="adminName" class="hint"></p></div>
       <nav><a href="index.html">Apri il sito</a><button id="refreshBtn" class="smallbtn" type="button">Aggiorna</button><button id="adminLogoutBtn" class="smallbtn warn" type="button">Esci</button></nav>
     </header>
     <div id="stats" class="statrow"></div>
