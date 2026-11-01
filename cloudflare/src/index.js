@@ -261,7 +261,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.4' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.5' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -341,8 +341,60 @@ async function route(request, env) {
     return ok({ loggedOut: true });
   }
 
+  // Presence is not a login/session count: only an authenticated, active
+  // user's OPEN page can refresh a short-lived heartbeat.
+  const presenceTTL = 150; // Last signal must be within 2.5 minutes.
+  const presenceIdOK = v => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f-]{27,28}$/i.test(v);
+  if (method === 'POST' && path === '/api/presence/heartbeat') {
+    const user = await auth(env, request);
+    if (user.role !== 'user' || user.status !== 'active') return fail('ACCESS_NOT_ACTIVE', 403);
+    const b = await readJSON(request);
+    if (!presenceIdOK(b.deviceId) || !presenceIdOK(b.tabId) ||
+        !['home', 'player'].includes(b.area)) return fail('INVALID_PRESENCE', 400);
+    await env.DB.prepare(`
+      INSERT INTO presence_tabs(user_id,device_id,tab_id,area,last_seen_at)
+      VALUES(?,?,?,?,?)
+      ON CONFLICT(user_id,device_id,tab_id) DO UPDATE SET
+        area=excluded.area,last_seen_at=excluded.last_seen_at
+    `).bind(user.id, b.deviceId, b.tabId, b.area, now()).run();
+    // Expired tabs no longer count. Remove old entries occasionally so
+    // page crashes cannot leave an unbounded table.
+    await env.DB.prepare('DELETE FROM presence_tabs WHERE last_seen_at < ?').bind(now() - 86400).run();
+    return ok({ received: true });
+  }
+  if (method === 'POST' && path === '/api/presence/leave') {
+    const user = await auth(env, request);
+    const b = await readJSON(request);
+    if (!presenceIdOK(b.deviceId) || !presenceIdOK(b.tabId)) return fail('INVALID_PRESENCE', 400);
+    await env.DB.prepare('DELETE FROM presence_tabs WHERE user_id=? AND device_id=? AND tab_id=?')
+      .bind(user.id, b.deviceId, b.tabId).run();
+    return ok({ closed: true });
+  }
   if (!path.startsWith('/api/admin/')) return fail('NOT_FOUND', 404);
   const admin = await auth(env, request, true);
+  if (method === 'GET' && path === '/api/admin/presence') {
+    const cutoff = now() - presenceTTL;
+    const rows = await env.DB.prepare(`
+      SELECT p.user_id,p.device_id,MAX(p.last_seen_at) AS last_seen,
+        MAX(CASE WHEN p.area='player' THEN 1 ELSE 0 END) AS in_player
+      FROM presence_tabs p JOIN users u ON u.id=p.user_id
+      WHERE p.last_seen_at>=? AND u.role='user' AND u.status='active'
+      GROUP BY p.user_id,p.device_id ORDER BY last_seen DESC LIMIT 5000
+    `).bind(cutoff).all();
+    const devices = rows.results.map(r => ({
+      userId: r.user_id, deviceId: r.device_id,
+      area: r.in_player ? 'player' : 'home', lastSeen: r.last_seen
+    }));
+    return ok({
+      devices,
+      onlineDevices: devices.length,
+      playerDevices: devices.filter(d => d.area === 'player').length,
+      homeDevices: devices.filter(d => d.area === 'home').length,
+      onlineUsers: new Set(devices.map(d => d.userId)).size,
+      timeoutSeconds: presenceTTL,
+      updatedAt: now()
+    });
+  }
   if (method === 'GET' && path === '/api/admin/summary') {
     const rows = await env.DB.prepare('SELECT status,COUNT(*) AS total FROM users WHERE role=? GROUP BY status').bind('user').all();
     const lic = await env.DB.prepare('SELECT COUNT(*) AS total FROM licenses').first();
