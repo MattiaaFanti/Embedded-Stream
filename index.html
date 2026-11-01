@@ -22,18 +22,27 @@
         <p>Il server delle licenze non è ancora collegato. Configurare il Worker Cloudflare in <code>config.js</code> prima di pubblicare questa pagina.</p>
       </div>
       <div id="signin" class="pane hidden">
-        <div class="pill">ACCESSO CON PASSKEY</div>
-        <h1>Accedi al tuo dispositivo</h1>
-        <p>Se hai già registrato una passkey, accedi con Face ID, impronta digitale o PIN. Non serve una password.</p>
-        <button id="signInBtn" class="button primary" type="button">Accedi con Passkey</button>
+        <div class="pill">ACCESSO FIREFOX</div>
+        <h1>Accedi a HTSport</h1>
+        <p>Il Firefox già registrato viene riconosciuto senza PIN, impronta o Passkey.</p>
+        <button id="browserSignInBtn" class="button primary" type="button">Accedi da questo Firefox</button>
+        <details class="auth-alternative">
+          <summary>Ho già una Passkey</summary>
+          <p class="hint">Solo se l'hai registrata in precedenza su HTSport.</p>
+          <button id="signInBtn" class="button secondary" type="button">Accedi con Passkey</button>
+        </details>
         <div class="line"><span>PRIMA REGISTRAZIONE — RICHIESTA DI APPROVAZIONE</span></div>
         <form id="registerForm" novalidate>
           <label for="username">Il tuo nome (visibile all’amministratore)</label>
           <input id="username" name="username" type="text" autocomplete="nickname" maxlength="40" required placeholder="Scrivi il tuo nome">
-          <button id="registerBtn" class="button secondary" type="button">Richiedi registrazione con Passkey</button>
+          <button id="registerBtn" class="button secondary" type="button">Richiedi registrazione</button>
           <p id="registerStatus" class="registration-status hidden" role="status" aria-live="polite"></p>
         </form>
-        <p class="hint">La registrazione viene rifiutata se il nome è già utilizzato o se viene rilevata una Passkey già associata a un account. Solo l’amministratore può vedere il seriale di registrazione e approvare la richiesta.</p>
+        <details class="auth-alternative">
+          <summary>Preferisco registrarmi con Passkey (facoltativa)</summary>
+          <button id="registerPasskeyBtn" class="button secondary" type="button">Registra con Passkey</button>
+        </details>
+        <p class="hint">Firefox conserva una sola chiave crittografica per questo profilo. Non può essere registrata due volte nel database. L'approvazione dell'amministratore è sempre obbligatoria.</p>
       </div>
 
       <div id="adminPasswordLogin" class="pane hidden">
@@ -87,6 +96,7 @@
   </section>
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js?v=20261101-approval3"></script>
-  <script src="site.js?v=20261101-presence-stable20"></script>
+  <script src="browser-identity.js?v=20261101-browserkey1"></script>
+  <script src="site.js?v=20261101-browserkey1"></script>
 </body>
 </html>
