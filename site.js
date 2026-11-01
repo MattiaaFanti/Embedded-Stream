@@ -46,7 +46,8 @@
       BROWSER_KEY_MISSING: 'Questo Firefox non è stato ancora registrato. Usa il modulo di prima registrazione.',
       BROWSER_KEY_UNKNOWN: 'La chiave di Firefox non è associata a un account attivo nel database. Se l’account è stato eliminato, puoi registrarlo nuovamente.',
       BROWSER_ALREADY_REGISTERED: 'Questo Firefox è già registrato. Usa Accedi da questo Firefox anziché creare un altro account.',
-      BROWSER_WORKER_UPDATE_REQUIRED: 'Il Worker Cloudflare deve essere aggiornato almeno alla versione 1.4.10 e occorre applicare la nuova tabella D1.',
+      BROWSER_WORKER_UPDATE_REQUIRED: 'Il Worker Cloudflare deve essere aggiornato alla versione 1.4.10.',
+      BROWSER_DB_UPDATE_REQUIRED: 'La nuova tabella browser_credentials non è ancora presente su Cloudflare D1. La registrazione Firefox non può essere completata.',
       INVALID_BROWSER_SIGNATURE: 'La verifica crittografica del browser non è riuscita.',
       WORKER_UPDATE_REQUIRED: 'Il Worker Cloudflare deve essere aggiornato almeno alla versione 1.4.2 per registrazioni e controlli di approvazione corretti.',
       REGISTRATION_FAILED: 'Registrazione non riuscita. Non è stato creato alcun nuovo account.',
@@ -273,17 +274,22 @@
       redirectTimer = setTimeout(() => location.assign(HTAuth.installUrl), 1500);
     } else stream();
   }
+  const MANUAL_LOGOUT_KEY = 'htsport-manual-logout-v1';
+  const manualLogout = () => { try { return localStorage.getItem(MANUAL_LOGOUT_KEY) === '1'; } catch { return false; } };
+  const markLoggedOut = () => { try { localStorage.setItem(MANUAL_LOGOUT_KEY, '1'); } catch {} };
+  const markLoggedIn = () => { try { localStorage.removeItem(MANUAL_LOGOUT_KEY); } catch {} };
   let automaticBrowserLoginTried = false;
   async function refresh(checked = false) {
     if (!HTAuth.ready) { show('setup'); return; }
     if (!HTAuth.getToken()) {
       // Only the IndexedDB key can be checked silently. Never trigger a
       // navigator.credentials.get() Passkey prompt automatically.
-      if (!automaticBrowserLoginTried && window.HTBrowserIdentity) {
+      if (!automaticBrowserLoginTried && !manualLogout() && window.HTBrowserIdentity) {
         automaticBrowserLoginTried = true;
         if (await HTBrowserIdentity.hasIdentity()) {
           try {
             await HTBrowserIdentity.login();
+            markLoggedIn();
             return await refresh(checked);
           } catch (err) {
             if (err.message === 'BANNED') {
@@ -293,7 +299,7 @@
             // Deleted account: retain the SAME local key for re-enrollment.
             // Unsupported old Worker: keep the legacy Passkey route usable.
             if (!['BROWSER_KEY_UNKNOWN','BROWSER_WORKER_UPDATE_REQUIRED',
-                'HTTP_404'].includes(err.message)) {
+                'BROWSER_DB_UPDATE_REQUIRED','HTTP_404'].includes(err.message)) {
               show('signin'); message(err); return;
             }
           }
@@ -314,6 +320,8 @@
       if (e.message === 'LOGIN_REQUIRED' || e.message === 'BANNED') {
         void stopPresence();
         HTAuth.setToken('');
+        if (e.message === 'LOGIN_REQUIRED' && !automaticBrowserLoginTried && !manualLogout())
+          return refresh(checked);
         if (e.message === 'LOGIN_REQUIRED' && getPendingName()) {
           $('pendingName').textContent = 'Utente: ' + getPendingName();
           show('pending');
@@ -333,12 +341,14 @@
     runButton(this, async () => {
       if (!window.HTBrowserIdentity) throw Error('BROWSER_KEY_NOT_SUPPORTED');
       await HTBrowserIdentity.login();
+      markLoggedIn();
       await refresh();
     });
   });
   $('signInBtn').addEventListener('click', function () {
     runButton(this, async () => {
       await HTAuth.login();
+      markLoggedIn();
       await refresh();
     });
   });
@@ -393,6 +403,7 @@
         if (await HTBrowserIdentity.hasIdentity()) {
           try {
             await HTBrowserIdentity.login();
+            markLoggedIn();
             await refresh();
             return;
           } catch (err) {
@@ -404,6 +415,7 @@
           status.textContent = step;
         });
       }
+      markLoggedIn();
       account = result;
       setPendingName(result.username);
       $('pendingName').textContent = 'Utente: ' + result.username;
@@ -462,6 +474,7 @@
     });
   });
   $('pendingLogout').addEventListener('click', async () => {
+    markLoggedOut();
     await stopPresence();
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     setPendingName('');
@@ -469,6 +482,7 @@
     if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } show('signin');
   });
   $('logoutBtn').addEventListener('click', async () => {
+    markLoggedOut();
     await stopPresence();
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     setPendingName('');
