@@ -236,7 +236,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.0' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.1' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -348,10 +348,17 @@ async function route(request, env) {
     const user = await env.DB.prepare('SELECT role FROM users WHERE id=?').bind(target).first();
     if (!user) return fail('USER_NOT_FOUND', 404);
     if (user.role !== 'user') return fail('CANNOT_DELETE_ADMIN', 403);
-    const outcome = await env.DB.prepare("DELETE FROM users WHERE id=? AND role='user'").bind(target).run();
-    if (outcome.meta.changes !== 1) return fail('USER_NOT_FOUND', 404);
+    // Remove credentials and sessions first, in the same D1 transaction.
+    // Deleting the user then frees the username; existing foreign keys
+    // unassign licenses and anonymize historical audit actors.
+    const results = await env.DB.batch([
+      env.DB.prepare('DELETE FROM credentials WHERE user_id=?').bind(target),
+      env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target),
+      env.DB.prepare("DELETE FROM users WHERE id=? AND role='user'").bind(target)
+    ]);
+    if (results[2].meta.changes !== 1) return fail('USER_NOT_FOUND', 404);
     await audit(env, admin.id, 'user_deleted', target);
-    return ok({ deleted: true });
+    return ok({ deleted: true, releasedPasskeys: results[0].meta.changes });
   }
   const revokeRoute = path.match(/^\/api\/admin\/credentials\/([A-Za-z0-9_-]+)\/revoke$/);
   if (method === 'POST' && revokeRoute) {
