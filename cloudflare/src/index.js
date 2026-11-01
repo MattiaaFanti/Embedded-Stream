@@ -300,7 +300,7 @@ async function route(request, env) {
     const row = await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='browser_credentials'"
     ).first();
-    return ok({ online: true, version: '1.4.10', browserKeyReady: !!row });
+    return ok({ online: true, version: '1.4.11', browserKeyReady: !!row });
   }
 
   // Browser-key enrollment never opens a native Passkey dialog. The same
@@ -615,6 +615,7 @@ async function route(request, env) {
     // the final database state explicitly instead.
     const results = await env.DB.batch([
       env.DB.prepare('DELETE FROM credentials WHERE user_id=?').bind(target),
+      env.DB.prepare('DELETE FROM browser_credentials WHERE user_id=?').bind(target),
       env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target),
       env.DB.prepare("DELETE FROM users WHERE id=? AND role='user'").bind(target)
     ]);
