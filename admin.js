@@ -19,7 +19,7 @@
       if (!Array.isArray(response.devices)) throw Error('INVALID_PRESENCE_DATA');
       state.presence = { ...response, ...countPresence(response.devices) };
       // The Worker reports last-online timestamps for both online and
-      // offline users. Update the existing table rows every five seconds.
+      // offline users. Update the existing table rows every fifteen seconds.
       if (Array.isArray(response.lastOnline)) {
         const lastSeen = new Map(response.lastOnline.map(item =>
           [item.userId, Number(item.lastOnlineAt)]));
@@ -30,7 +30,7 @@
         });
       }
       $('presenceInfo').textContent =
-        'Aggiornamento automatico ogni 5 secondi · Offline dopo 20 secondi senza segnali dalla pagina aperta.';
+        'Aggiornamento automatico ogni 15 secondi · Segnale utenti ogni 10 secondi · Offline dopo 20 secondi senza segnali.';
     } catch {
       state.presence = null;
       $('presenceInfo').textContent =
@@ -45,7 +45,7 @@
     if (!presenceTimer) {
       presenceTimer = setInterval(() => {
         if (!$('dashboard').classList.contains('hidden')) void refreshPresence();
-      }, 5000);
+      }, 15000);
     }
     void refreshPresence();
   }
