@@ -99,7 +99,6 @@
     if (state.audit.length > 100) state.audit.length = 100;
   }
   async function changeUser(userId, status) {
-    if (!confirm('Confermare il cambio dello stato in "' + status + '"?')) return;
     const response = await HTAuth.call('/api/admin/users/' + encodeURIComponent(userId) + '/status', { status });
     if (!response.updated) throw Error('Aggiornamento non confermato dal server.');
     const user = state.users.find(u => u.id === userId);
