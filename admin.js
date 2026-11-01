@@ -1,7 +1,46 @@
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
-  const state = { users: [], credentials: [], licenses: [], audit: [], editingId: null, admin: null };
+  const state = { users: [], credentials: [], licenses: [], audit: [],
+    editingId: null, admin: null, presence: null };
+  let presenceTimer = null, presenceBusy = false;
+  function countPresence(devices) {
+    const list = Array.isArray(devices) ? devices : [];
+    return {
+      devices: list, onlineDevices: list.length,
+      playerDevices: list.filter(d => d.area === 'player').length,
+      homeDevices: list.filter(d => d.area === 'home').length,
+      onlineUsers: new Set(list.map(d => d.userId)).size
+    };
+  }
+  async function refreshPresence() {
+    if (!state.admin || presenceBusy) return;
+    presenceBusy = true;
+    try {
+      const response = await HTAuth.call('/api/admin/presence');
+      if (!Array.isArray(response.devices)) throw Error('INVALID_PRESENCE_DATA');
+      state.presence = { ...response, ...countPresence(response.devices) };
+      $('presenceInfo').textContent =
+        'Aggiornamento automatico ogni 20 s · Offline dopo massimo circa 2 minuti e mezzo senza segnali. ' +
+        'Area streaming indica la pagina con player aperto, non la riproduzione effettiva.';
+    } catch {
+      state.presence = null;
+      $('presenceInfo').textContent =
+        'Presenza non disponibile: occorrono il Worker aggiornato e la migrazione D1 0002_presence.sql.';
+    } finally {
+      presenceBusy = false;
+      renderUsers();
+      renderStats({ licenses: state.licenses.length });
+    }
+  }
+  function startPresenceRefresh() {
+    if (!presenceTimer) {
+      presenceTimer = setInterval(() => {
+        if (!$('dashboard').classList.contains('hidden')) void refreshPresence();
+      }, 20000);
+    }
+    void refreshPresence();
+  }
   function showAuth(section) {
     $('adminAuth').classList.remove('hidden');
     $('dashboard').classList.add('hidden');
@@ -70,7 +109,10 @@
       ['In attesa', state.users.filter(u => u.status === 'pending').length],
       ['Attivi', state.users.filter(u => u.status === 'active' && u.role === 'user').length],
       ['Bannati', state.users.filter(u => u.status === 'banned').length],
-      ['Licenze', summary.licenses]
+      ['Licenze', summary.licenses],
+      ['Dispositivi online', state.presence ? state.presence.onlineDevices : '—'],
+      ['Area streaming', state.presence ? state.presence.playerDevices : '—'],
+      ['Solo homepage', state.presence ? state.presence.homeDevices : '—']
     ];
     $('stats').replaceChildren();
     stats.forEach(([label, value]) => {
@@ -109,11 +151,28 @@
   }
   function renderUsers() {
     const body = $('usersBody'); body.replaceChildren();
+    const present = new Map();
+    if (state.presence) {
+      state.presence.devices.forEach(d => {
+        if (!present.has(d.userId)) present.set(d.userId, []);
+        present.get(d.userId).push(d);
+      });
+    }
     state.users.forEach(u => {
       const row = document.createElement('tr');
       td(row, u.username + (u.role === 'admin' ? ' (admin)' : ''));
       td(row, u.registrationSerial || u.id, true); statusCell(row, u.status);
-      td(row, u.credentials); td(row, date(u.last_login_at));
+      td(row, u.credentials);
+      const activeDevices = present.get(u.id) || [];
+      const presenceLabel = !state.presence ? '—' :
+        activeDevices.length ?
+          ('Online · ' + activeDevices.length + ' · ' +
+            (activeDevices.some(d => d.area === 'player') ? 'Area streaming' : 'Homepage')) :
+          'Offline';
+      const presenceCell = td(row, presenceLabel);
+      presenceCell.classList.add('presence-cell');
+      if (state.presence) presenceCell.classList.add(activeDevices.length ? 'presence-online' : 'presence-offline');
+      td(row, date(u.last_login_at));
       const actions = document.createElement('td'); row.append(actions);
       if (u.role !== 'admin') {
         // "pending" is reserved for first-time registration only.
@@ -133,8 +192,13 @@
           const oldUsers = state.users;
           const oldCredentials = state.credentials;
           const oldAssigned = new Map(state.licenses.map(lic => [lic.id, lic.assignedUserId]));
+          const oldPresence = state.presence;
           state.users = state.users.filter(user => user.id !== u.id);
           state.credentials = state.credentials.filter(cred => cred.user_id !== u.id);
+          if (state.presence) {
+            state.presence = { ...state.presence,
+              ...countPresence(state.presence.devices.filter(device => device.userId !== u.id)) };
+          }
           state.licenses.forEach(lic => {
             if (lic.assignedUserId === u.id) lic.assignedUserId = null;
           });
@@ -162,6 +226,7 @@
             // riga, le credenziali e le assegnazioni senza reload della pagina.
             state.users = oldUsers;
             state.credentials = oldCredentials;
+            state.presence = oldPresence;
             state.licenses.forEach(lic => {
               if (oldAssigned.has(lic.id)) lic.assignedUserId = oldAssigned.get(lic.id);
             });
@@ -279,6 +344,7 @@
     await load();
     $('adminAuth').classList.add('hidden');
     $('dashboard').classList.remove('hidden');
+    startPresenceRefresh();
   }
   async function start() {
     if (!HTAuth.ready) { showAuth('adminSetup'); return; }
@@ -324,8 +390,10 @@
   });
   $('refreshBtn').addEventListener('click', function () { work(this, load, true); });
   $('adminLogoutBtn').addEventListener('click', async () => {
+    if (presenceTimer) clearInterval(presenceTimer);
+    presenceTimer = null;
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
-    state.admin = null; showAuth('adminLogin');
+    state.admin = null; state.presence = null; showAuth('adminLogin');
   });
   document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
   $('clearLicenseBtn').addEventListener('click', resetLicense);
