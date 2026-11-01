@@ -208,6 +208,7 @@
     if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
     if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
     if (redirectTimer) { clearTimeout(redirectTimer); redirectTimer = null; }
+    clearStreamMonitoring();
     $('frameHost').replaceChildren();
     HTAuth.setToken('');
     account = null;
@@ -313,6 +314,73 @@
     if (!document.hidden) void presenceBeat();
   });
 
+  // External content can fail inside a cross-origin iframe without exposing
+  // its error page to the parent (same-origin restrictions). We preflight
+  // server-side before creating the iframe, then monitor availability.
+  let streamProbeBusy = false;
+  let streamMonitorTimer = null;
+  let streamProbeFailures = 0;
+  let streamProbeGeneration = 0;
+  function setStreamUnavailable(checking = false) {
+    const panel = $('streamUnavailable');
+    panel.classList.remove('hidden');
+    $('streamStatusTitle').textContent = checking
+      ? 'Collegamento in corso'
+      : 'Servizio temporaneamente non disponibile';
+    $('streamStatusDescription').textContent = checking
+      ? 'Verifica della connessione in corso.'
+      : 'La connessione è assente oppure il contenuto non è raggiungibile in questo momento.';
+    $('streamRetryBtn').classList.toggle('hidden', checking);
+    if (!checking) $('frameHost').replaceChildren();
+  }
+  function clearStreamMonitoring() {
+    streamProbeGeneration++;
+    if (streamMonitorTimer) clearInterval(streamMonitorTimer);
+    streamMonitorTimer = null;
+    streamProbeFailures = 0;
+    $('streamUnavailable').classList.add('hidden');
+  }
+  async function checkStreamAndLoad(force = false) {
+    if (streamProbeBusy || !account || account.status !== 'active' ||
+        $('player').classList.contains('hidden')) return;
+    if (force) $('frameHost').replaceChildren();
+    const hasFrame = !!$('htsport-frame');
+    if (!hasFrame) setStreamUnavailable(true);
+    if (!navigator.onLine) {
+      setStreamUnavailable();
+      return;
+    }
+    streamProbeBusy = true;
+    const generation = streamProbeGeneration;
+    const token = HTAuth.getToken();
+    try {
+      const result = await HTAuth.call('/api/stream/check');
+      if (generation !== streamProbeGeneration || token !== HTAuth.getToken() ||
+          $('player').classList.contains('hidden')) return;
+      if (!result.available) throw Error('STREAM_UNAVAILABLE');
+      streamProbeFailures = 0;
+      $('streamUnavailable').classList.add('hidden');
+      if (!$('htsport-frame')) {
+        const frame = document.createElement('iframe');
+        frame.id = 'htsport-frame'; frame.title = 'Sport';
+        frame.src = 'https://htsport.info/';
+        frame.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+        frame.setAttribute('allowfullscreen', '');
+        frame.setAttribute('webkitallowfullscreen', '');
+        frame.referrerPolicy = 'strict-origin-when-cross-origin';
+        frame.addEventListener('load', () => { void checkVisibleAccess(); });
+        $('frameHost').append(frame);
+      }
+    } catch {
+      if (generation !== streamProbeGeneration ||
+          $('player').classList.contains('hidden')) return;
+      streamProbeFailures++;
+      // Avoid stopping an active video because of one transient failed probe.
+      if (!hasFrame || streamProbeFailures >= 2) setStreamUnavailable();
+    } finally {
+      streamProbeBusy = false;
+    }
+  }
   function stream() {
     if (redirectTimer) clearTimeout(redirectTimer);
     if (!account || account.status !== 'active') return;
@@ -324,20 +392,10 @@
     watchForOriginalBar();
     void updateStatus();
     if (!statusTimer) statusTimer = setInterval(updateStatus, 60000);
-    if (!$('htsport-frame')) {
-      const frame = document.createElement('iframe');
-      frame.id = 'htsport-frame'; frame.title = 'Sport';
-      frame.src = 'https://htsport.info/';
-      frame.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
-      frame.setAttribute('allowfullscreen', '');
-      frame.setAttribute('webkitallowfullscreen', '');
-      frame.referrerPolicy = 'strict-origin-when-cross-origin';
-      // Cross-origin iframe navigation (e.g. homepage -> stream) cannot be
-      // intercepted before the click. Check authorization on each frame load,
-      // in addition to the 20-second heartbeat revocation check.
-      frame.addEventListener('load', () => { void checkVisibleAccess(); });
-      $('frameHost').append(frame);
+    if (!streamMonitorTimer) {
+      streamMonitorTimer = setInterval(() => { void checkStreamAndLoad(); }, 60000);
     }
+    void checkStreamAndLoad();
   }
   function afterAuth(u, checked = false) {
     account = u;
@@ -366,6 +424,7 @@
   let automaticBrowserLoginTried = false;
   async function refresh(checked = false) {
     if (!HTAuth.ready) { show('setup'); return; }
+    if (!navigator.onLine) { show('offlineGate'); return; }
     if (!HTAuth.getToken()) {
       // Only the IndexedDB key can be checked silently. Never trigger a
       // navigator.credentials.get() Passkey prompt automatically.
@@ -417,6 +476,8 @@
           show('signin');
           if (e.message === 'BANNED') message(e);
         }
+      } else if (e.name === 'TypeError' || /Failed to fetch|NetworkError|HTTP_50[234]/i.test(e.message || '')) {
+        show('offlineGate');
       } else { show('signin'); message(e); }
     }
   }
@@ -580,7 +641,8 @@
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     setPendingName('');
     account = null; syncStatusBar();
-    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } show('signin');
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+    clearStreamMonitoring(); $('frameHost').replaceChildren(); show('signin');
   });
   $('logoutBtn').addEventListener('click', async () => {
     markLoggedOut();
@@ -588,7 +650,8 @@
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     setPendingName('');
     account = null; syncStatusBar();
-    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } $('frameHost').replaceChildren(); show('signin');
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+    clearStreamMonitoring(); $('frameHost').replaceChildren(); show('signin');
   });
   $('openAdminLoginBtn').addEventListener('click', () => {
     if (redirectTimer) { clearTimeout(redirectTimer); redirectTimer = null; }
@@ -610,5 +673,24 @@
     });
   });
   $('skipGuide').addEventListener('click', stream);
+  $('offlineRetryBtn').addEventListener('click', () => { void refresh(); });
+  $('streamRetryBtn').addEventListener('click', () => {
+    if (streamProbeBusy) return;
+    streamProbeFailures = 0;
+    void checkStreamAndLoad(true);
+  });
+  window.addEventListener('offline', () => {
+    if (!$('player').classList.contains('hidden')) setStreamUnavailable();
+    else show('offlineGate');
+  });
+  window.addEventListener('online', () => {
+    if (!$('player').classList.contains('hidden')) void checkStreamAndLoad(true);
+    else if (!$('offlineGate').classList.contains('hidden')) void refresh();
+  });
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sport-sw.js', { scope: './' }).catch(() => {});
+    });
+  }
   refresh();
 })();
