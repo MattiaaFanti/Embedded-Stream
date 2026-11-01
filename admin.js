@@ -18,6 +18,17 @@
       const response = await HTAuth.call('/api/admin/presence');
       if (!Array.isArray(response.devices)) throw Error('INVALID_PRESENCE_DATA');
       state.presence = { ...response, ...countPresence(response.devices) };
+      // The Worker reports last-online timestamps for both online and
+      // offline users. Update the existing table rows every five seconds.
+      if (Array.isArray(response.lastOnline)) {
+        const lastSeen = new Map(response.lastOnline.map(item =>
+          [item.userId, Number(item.lastOnlineAt)]));
+        state.users.forEach(user => {
+          const timestamp = lastSeen.get(user.id);
+          if (Number.isFinite(timestamp) && timestamp > Number(user.last_login_at || 0))
+            user.last_login_at = timestamp;
+        });
+      }
       $('presenceInfo').textContent =
         'Aggiornamento automatico ogni 5 secondi · Offline dopo 20 secondi senza segnali dalla pagina aperta.';
     } catch {
@@ -78,9 +89,16 @@
     b.textContent = label; b.addEventListener('click', () => work(b, onClick, true));
     parent.append(b); return b;
   }
-  function date(timestamp) {
+  function date(timestamp, includeSeconds = false) {
     if (!timestamp) return '—';
-    return new Date(Number(timestamp) * 1000).toLocaleString('it-IT');
+    const dateValue = new Date(Number(timestamp) * 1000);
+    if (Number.isNaN(dateValue.getTime())) return '—';
+    return includeSeconds
+      ? dateValue.toLocaleString('it-IT', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        })
+      : dateValue.toLocaleString('it-IT');
   }
   function tag(status) {
     const span = document.createElement('span');
@@ -163,7 +181,7 @@
       const presenceCell = td(row, presenceLabel);
       presenceCell.classList.add('presence-cell');
       if (state.presence) presenceCell.classList.add(activeDevices.length ? 'presence-online' : 'presence-offline');
-      td(row, date(u.last_login_at));
+      td(row, date(u.last_login_at, true));
       const actions = document.createElement('td'); row.append(actions);
       if (u.role !== 'admin') {
         // "pending" is reserved for first-time registration only.
