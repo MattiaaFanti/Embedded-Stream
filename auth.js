@@ -108,7 +108,27 @@
   async function login() {
     const result = await call('/api/login/options', {});
     const credential = await getCredential(result.options);
-    const saved = await call('/api/login/verify', { requestId: result.requestId, credential });
+    let saved;
+    try {
+      saved = await call('/api/login/verify', { requestId: result.requestId, credential });
+    } catch (error) {
+      if (error.message === 'DEVICE_REVOKED_OR_UNKNOWN') {
+        // The admin may have deleted this account. The passkey still lives
+        // in the browser/phone; where supported, tell the authenticator
+        // that the server no longer accepts it (WebAuthn Signal API).
+        try {
+          if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
+            await PublicKeyCredential.signalUnknownCredential({
+              rpId: result.options.rpId || location.hostname,
+              credentialId: credential.id
+            });
+          }
+        } catch (_) {
+          // Browser/provider support is optional; a new registration remains possible.
+        }
+      }
+      throw error;
+    }
     setToken(saved.token);
     return saved;
   }
