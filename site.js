@@ -141,11 +141,81 @@
     url.searchParams.set('refresh', webUpdateVersion + '-' + Date.now());
     location.replace(url.href);
   });
+  // Presence comes from open, approved HTSport pages, not saved sessions.
+  // Tabs in the same browser use one random local browser identifier.
+  const presenceTabId = crypto.randomUUID();
+  const presenceDeviceId = (() => {
+    const key = 'htsport-presence-browser-v1';
+    try {
+      const existing = localStorage.getItem(key);
+      if (existing && /^[0-9a-f-]{36}$/i.test(existing)) return existing;
+      const created = crypto.randomUUID();
+      localStorage.setItem(key, created);
+      return created;
+    } catch { return crypto.randomUUID(); }
+  })();
+  let presenceTimer = null;
+  let presenceBusy = false;
+  let presenceUnsupported = false;
+  function currentPresenceArea() {
+    return $('player').classList.contains('hidden') ? 'home' : 'player';
+  }
+  async function presenceBeat() {
+    if (!presenceTimer || presenceBusy || presenceUnsupported ||
+        !account || account.role !== 'user' || account.status !== 'active' ||
+        !HTAuth.getToken()) return;
+    presenceBusy = true;
+    try {
+      await HTAuth.call('/api/presence/heartbeat', {
+        deviceId: presenceDeviceId, tabId: presenceTabId,
+        area: currentPresenceArea()
+      });
+    } catch (error) {
+      // An old Worker must not break the streaming application.
+      if (error.message === 'HTTP_404') presenceUnsupported = true;
+    } finally { presenceBusy = false; }
+  }
+  function startPresence() {
+    if (!account || account.role !== 'user' || account.status !== 'active') return;
+    if (!presenceTimer) presenceTimer = setInterval(() => { void presenceBeat(); }, 25000);
+    void presenceBeat();
+  }
+  async function stopPresence() {
+    if (presenceTimer) clearInterval(presenceTimer);
+    presenceTimer = null;
+    if (presenceUnsupported || !HTAuth.getToken()) return;
+    try {
+      await HTAuth.call('/api/presence/leave', {
+        deviceId: presenceDeviceId, tabId: presenceTabId
+      });
+    } catch { /* Presence also expires when the browser vanishes. */ }
+  }
+  window.addEventListener('pagehide', () => {
+    if (!presenceTimer || presenceUnsupported || !HTAuth.getToken()) return;
+    try {
+      void fetch(new URL('/api/presence/leave', String(window.HTSPORT_API_BASE)).href, {
+        method: 'POST', cache: 'no-store', keepalive: true,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + HTAuth.getToken()
+        },
+        body: JSON.stringify({ deviceId: presenceDeviceId, tabId: presenceTabId })
+      }).catch(() => {});
+    } catch {}
+  });
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) void presenceBeat();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) void presenceBeat();
+  });
+
   function stream() {
     if (redirectTimer) clearTimeout(redirectTimer);
     if (!account || account.status !== 'active') return;
     $('gate').classList.add('hidden');
     $('player').classList.remove('hidden');
+    void presenceBeat();
     $('installLink').href = HTAuth.installUrl;
     syncStatusBar();
     watchForOriginalBar();
@@ -164,6 +234,8 @@
   }
   function afterAuth(u, checked = false) {
     account = u;
+    if (u.status === 'active') startPresence();
+    else if (presenceTimer) void stopPresence();
     if (u.status !== 'active' || u.role !== 'admin') syncStatusBar();
     if (u.status === 'banned') { HTAuth.setToken(''); show('signin'); message(Error('BANNED')); return; }
     if (u.status === 'pending') {
@@ -200,6 +272,7 @@
       afterAuth(u, checked);
     } catch (e) {
       if (e.message === 'LOGIN_REQUIRED' || e.message === 'BANNED') {
+        void stopPresence();
         HTAuth.setToken('');
         if (e.message === 'LOGIN_REQUIRED' && getPendingName()) {
           $('pendingName').textContent = 'Utente: ' + getPendingName();
@@ -309,12 +382,14 @@
     });
   });
   $('pendingLogout').addEventListener('click', async () => {
+    await stopPresence();
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     setPendingName('');
     account = null; syncStatusBar();
     if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } show('signin');
   });
   $('logoutBtn').addEventListener('click', async () => {
+    await stopPresence();
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     setPendingName('');
     account = null; syncStatusBar();
