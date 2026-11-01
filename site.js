@@ -3,6 +3,17 @@
   const $ = id => document.getElementById(id);
   const views = ['loading','setup','signin','pending','welcome','adminPasswordLogin'];
   let account = null, redirectTimer = null;
+  const PENDING_NAME_KEY = 'htsport-pending-username-v2';
+  function getPendingName() {
+    try { return sessionStorage.getItem(PENDING_NAME_KEY) || ''; }
+    catch { return ''; }
+  }
+  function setPendingName(name) {
+    try {
+      if (name) sessionStorage.setItem(PENDING_NAME_KEY, name);
+      else sessionStorage.removeItem(PENDING_NAME_KEY);
+    } catch {}
+  }
   function show(id) {
     views.forEach(v => $(v).classList.toggle('hidden', v !== id));
     $('gate').classList.remove('hidden');
@@ -13,6 +24,7 @@
     const m = {
       SERVER_NOT_CONFIGURED: 'Il servizio Cloudflare non è ancora configurato.',
       LOGIN_REQUIRED: 'Sessione scaduta. Accedi con la tua Passkey.',
+      LOGIN_CREDENTIALS_UNAVAILABLE: 'Nessuna Passkey attiva associata al nome indicato. Usa esattamente il nome dell’ultima registrazione approvata.',
       BANNED: 'Accesso disabilitato dall’amministratore.',
       PASSKEY_NOT_SUPPORTED: 'Questo browser non supporta le Passkey richieste.',
       PASSKEY_CANCELLED: 'Creazione della Passkey annullata. La registrazione non è stata inviata.',
@@ -155,6 +167,7 @@
     if (u.status !== 'active' || u.role !== 'admin') syncStatusBar();
     if (u.status === 'banned') { HTAuth.setToken(''); show('signin'); message(Error('BANNED')); return; }
     if (u.status === 'pending') {
+      setPendingName(u.username);
       $('pendingName').textContent = 'Utente: ' + u.username;
       show('pending');
       $('pendingFeedback').classList.toggle('hidden', !checked);
@@ -162,6 +175,7 @@
       return;
     }
     if (u.status !== 'active') { show('signin'); return; }
+    setPendingName('');
     const key = 'htsport-guide-seen-v1';
     if (!localStorage.getItem(key)) {
       localStorage.setItem(key, '1');
@@ -172,20 +186,40 @@
   }
   async function refresh(checked = false) {
     if (!HTAuth.ready) { show('setup'); return; }
-    if (!HTAuth.getToken()) { show('signin'); return; }
+    if (!HTAuth.getToken()) {
+      const pending = getPendingName();
+      if (pending) {
+        $('pendingName').textContent = 'Utente: ' + pending;
+        show('pending');
+        $('pendingFeedback').classList.add('hidden');
+      } else show('signin');
+      return;
+    }
     try {
       const u = await HTAuth.call('/api/me');
       afterAuth(u, checked);
     } catch (e) {
       if (e.message === 'LOGIN_REQUIRED' || e.message === 'BANNED') {
         HTAuth.setToken('');
-        show('signin');
-        if (e.message === 'BANNED') message(e);
+        if (e.message === 'LOGIN_REQUIRED' && getPendingName()) {
+          $('pendingName').textContent = 'Utente: ' + getPendingName();
+          show('pending');
+          $('pendingFeedback').textContent = 'Sessione da ripristinare. Premi Controlla autorizzazione per accedere con la Passkey della nuova registrazione.';
+          $('pendingFeedback').classList.remove('hidden');
+        } else {
+          if (e.message === 'BANNED') setPendingName('');
+          show('signin');
+          if (e.message === 'BANNED') message(e);
+        }
       } else { show('signin'); message(e); }
     }
   }
   $('signInBtn').addEventListener('click', function () {
-    runButton(this, async () => { await HTAuth.login(); await refresh(); });
+    runButton(this, async () => {
+      const name = $('signInUsername').value.trim().replace(/\s+/g, ' ');
+      await HTAuth.login(name || undefined);
+      await refresh();
+    });
   });
   // Use a direct click handler: native HTML constraint validation must
   // never silently suppress the first step of a Passkey signup.
@@ -227,6 +261,7 @@
         status.textContent = step;
       });
       account = result;
+      setPendingName(result.username);
       $('pendingName').textContent = 'Utente: ' + result.username;
       show('pending');
       $('pendingFeedback').classList.add('hidden');
@@ -252,18 +287,35 @@
     }
   });
   $('pendingCheck').addEventListener('click', function () {
-    runButton(this, async () => {
-      if (!HTAuth.getToken()) await HTAuth.login();
-      await refresh(true);
+    const btn = this;
+    if (btn.disabled) return;
+    runButton(btn, async () => {
+      const feedback = $('pendingFeedback');
+      feedback.classList.add('hidden');
+      try {
+        if (!HTAuth.getToken()) {
+          const name = (account && account.username) || getPendingName();
+          if (!name) throw Error('LOGIN_REQUIRED');
+          // Legacy registrations did not receive a session after WebAuthn
+          // creation: only offer credentials belonging to the NEW account.
+          await HTAuth.login(name);
+        }
+        await refresh(true);
+      } catch (error) {
+        feedback.textContent = readableError(error);
+        feedback.classList.remove('hidden');
+      }
     });
   });
   $('pendingLogout').addEventListener('click', async () => {
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
+    setPendingName('');
     account = null; syncStatusBar();
     if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } show('signin');
   });
   $('logoutBtn').addEventListener('click', async () => {
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
+    setPendingName('');
     account = null; syncStatusBar();
     if (statusTimer) { clearInterval(statusTimer); statusTimer = null; } $('frameHost').replaceChildren(); show('signin');
   });
