@@ -117,9 +117,10 @@
       td(row, u.credentials); td(row, date(u.last_login_at));
       const actions = document.createElement('td'); row.append(actions);
       if (u.role !== 'admin') {
+        // "pending" is reserved for first-time registration only.
+        // Admin actions are just Approva and Banna (plus the separate X delete).
         if (u.status !== 'active') button(actions, 'Approva', () => changeUser(u.id, 'active'));
         if (u.status !== 'banned') button(actions, 'Banna', () => changeUser(u.id, 'banned'), true);
-        if (u.status === 'active') button(actions, 'Sospendi', () => changeUser(u.id, 'pending'));
       }
       const deleteCell = document.createElement('td');
       deleteCell.className = 'user-delete-cell';
