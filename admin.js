@@ -80,10 +80,33 @@
       el.append(strong, span); $('stats').append(el);
     });
   }
+  // Aggiorna immediatamente i componenti dopo la conferma del Worker.
+  // Non dipende dalle altre chiamate di load(), che potrebbero fallire.
+  function refreshLocalTables() {
+    renderUsers();
+    renderDevices();
+    renderLicenses();
+    renderAssign();
+    renderStats({ licenses: state.licenses.length });
+    renderAudit();
+  }
+  function addAudit(action, target) {
+    state.audit.unshift({
+      action, target,
+      actor_user_id: state.admin && state.admin.userId,
+      created_at: Math.floor(Date.now() / 1000)
+    });
+    if (state.audit.length > 100) state.audit.length = 100;
+  }
   async function changeUser(userId, status) {
     if (!confirm('Confermare il cambio dello stato in "' + status + '"?')) return;
-    await HTAuth.call('/api/admin/users/' + encodeURIComponent(userId) + '/status', { status });
-    await load();
+    const response = await HTAuth.call('/api/admin/users/' + encodeURIComponent(userId) + '/status', { status });
+    if (!response.updated) throw Error('Aggiornamento non confermato dal server.');
+    const user = state.users.find(u => u.id === userId);
+    if (!user) { await load(); return; }
+    user.status = status;
+    addAudit('user_' + status, userId);
+    refreshLocalTables();
   }
   function renderUsers() {
     const body = $('usersBody'); body.replaceChildren();
@@ -105,8 +128,17 @@
         const remove = button(deleteCell, '×', async () => {
           if (!confirm('Eliminare definitivamente l’utente "' + u.username +
             '"? Verranno eliminate anche le sue Passkey e sessioni. Le licenze rimarranno non assegnate.')) return;
-          await HTAuth.call('/api/admin/users/' + encodeURIComponent(u.id) + '/delete', {});
-          await load();
+          const response = await HTAuth.call('/api/admin/users/' + encodeURIComponent(u.id) + '/delete', {});
+          if (!response.deleted) throw Error('Eliminazione non confermata dal server.');
+          // La riga sparisce appena il Worker conferma l'eliminazione.
+          // Aggiorna anche il conteggio delle Passkey e le licenze assegnate.
+          state.users = state.users.filter(user => user.id !== u.id);
+          state.credentials = state.credentials.filter(cred => cred.user_id !== u.id);
+          state.licenses.forEach(lic => {
+            if (lic.assignedUserId === u.id) lic.assignedUserId = null;
+          });
+          addAudit('user_deleted', u.id);
+          refreshLocalTables();
         }, true);
         remove.classList.add('delete-user-btn');
         remove.setAttribute('aria-label', 'Elimina definitivamente ' + u.username);
@@ -126,8 +158,13 @@
       if (!c.revoked_at && c.user_id !== state.admin.userId) {
         button(actions, 'Revoca', async () => {
           if (!confirm('Revocare questa Passkey? Le sessioni dell’utente verranno chiuse.')) return;
-          await HTAuth.call('/api/admin/credentials/' + encodeURIComponent(c.id) + '/revoke', {});
-          await load();
+          const response = await HTAuth.call('/api/admin/credentials/' + encodeURIComponent(c.id) + '/revoke', {});
+          if (!response.revoked) throw Error('Revoca non confermata dal server.');
+          c.revoked_at = Math.floor(Date.now() / 1000);
+          const owner = state.users.find(u => u.id === c.user_id);
+          if (owner) owner.credentials = Math.max(0, Number(owner.credentials || 0) - 1);
+          addAudit('credential_revoked', c.id);
+          refreshLocalTables();
         }, true);
       }
       body.append(row);
@@ -174,15 +211,21 @@
       if (lic.status === 'active') {
         button(actions, 'Revoca', async () => {
           if (!confirm('Revocare questa licenza?')) return;
-          await HTAuth.call('/api/admin/licenses/' + lic.id, { status: 'revoked' });
-          await load();
+          const response = await HTAuth.call('/api/admin/licenses/' + lic.id, { status: 'revoked' });
+          if (!response.updated) throw Error('Revoca non confermata dal server.');
+          lic.status = 'revoked';
+          addAudit('license_updated', lic.id);
+          refreshLocalTables();
         }, true);
       }
       button(actions, 'Elimina', async () => {
         if (!confirm('Eliminare definitivamente il seriale e le note? Operazione irreversibile.')) return;
-        await HTAuth.call('/api/admin/licenses/' + lic.id + '/delete', {});
+        const response = await HTAuth.call('/api/admin/licenses/' + lic.id + '/delete', {});
+        if (!response.deleted) throw Error('Eliminazione licenza non confermata dal server.');
+        state.licenses = state.licenses.filter(item => item.id !== lic.id);
         if (state.editingId === lic.id) resetLicense();
-        await load();
+        addAudit('license_deleted', lic.id);
+        refreshLocalTables();
       }, true);
       body.append(row);
     });
@@ -265,9 +308,27 @@
         notes: $('licenseNotes').value, assignedUserId: $('assignedUser').value || null,
         expiresOn: $('expiresOn').value || null, status: $('licenseStatus').value
       };
-      if (state.editingId) await HTAuth.call('/api/admin/licenses/' + state.editingId, payload);
-      else await HTAuth.call('/api/admin/licenses', payload);
-      resetLicense(); await load();
+      if (state.editingId) {
+        const result = await HTAuth.call('/api/admin/licenses/' + state.editingId, payload);
+        if (!result.updated) throw Error('Modifica licenza non confermata dal server.');
+        const lic = state.licenses.find(item => item.id === state.editingId);
+        if (lic) Object.assign(lic, {
+          product: payload.product, serial: payload.serial, notes: payload.notes,
+          assignedUserId: payload.assignedUserId, expiresOn: payload.expiresOn,
+          status: payload.status
+        });
+        addAudit('license_updated', state.editingId);
+      } else {
+        const result = await HTAuth.call('/api/admin/licenses', payload);
+        if (!result.id) throw Error('Creazione licenza non confermata dal server.');
+        state.licenses.unshift({
+          ...payload, id: result.id, status: 'active',
+          createdAt: Math.floor(Date.now() / 1000)
+        });
+        addAudit('license_created', result.id);
+      }
+      resetLicense();
+      refreshLocalTables();
     }, true);
   });
   start();
