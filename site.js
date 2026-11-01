@@ -165,15 +165,22 @@
         !account || account.role !== 'user' || account.status !== 'active' ||
         !HTAuth.getToken()) return;
     presenceBusy = true;
+    const sentArea = currentPresenceArea();
     try {
       await HTAuth.call('/api/presence/heartbeat', {
         deviceId: presenceDeviceId, tabId: presenceTabId,
-        area: currentPresenceArea()
+        area: sentArea
       });
     } catch (error) {
       // An old Worker must not break the streaming application.
       if (error.message === 'HTTP_404') presenceUnsupported = true;
-    } finally { presenceBusy = false; }
+    } finally {
+      presenceBusy = false;
+      // Login may open the player while the initial homepage heartbeat
+      // is still running; send the new area immediately.
+      if (presenceTimer && !presenceUnsupported && sentArea !== currentPresenceArea())
+        void presenceBeat();
+    }
   }
   function startPresence() {
     if (!account || account.role !== 'user' || account.status !== 'active') return;
