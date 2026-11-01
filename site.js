@@ -24,7 +24,7 @@
       TypeError: 'La richiesta Passkey non è supportata o non è valida per questo dispositivo.',
       HTTP_404: 'Il Worker Cloudflare non ha ancora le API di registrazione aggiornate.',
       HTTP_503: 'Il server delle registrazioni non è disponibile.',
-      DEVICE_REVOKED_OR_UNKNOWN: 'Passkey revocata oppure non registrata.',
+      DEVICE_REVOKED_OR_UNKNOWN: 'Questa Passkey non è più riconosciuta: il precedente account potrebbe essere stato eliminato o la credenziale revocata. Puoi registrarti nuovamente creando una nuova Passkey; servirà l’approvazione dell’amministratore.',
       PASSKEY_INVALID: 'Autenticazione non valida. Riprova.',
       PASSKEY_ALREADY_REGISTERED: 'Questa Passkey è già registrata. Usa Accedi con Passkey anziché creare un altro account.',
       USERNAME_ALREADY_REGISTERED: 'Nome utente già registrato. Scegli un altro nome oppure accedi con la tua Passkey.',
