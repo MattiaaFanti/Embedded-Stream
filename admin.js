@@ -30,7 +30,7 @@
         });
       }
       $('presenceInfo').textContent =
-        'Aggiornamento automatico ogni 15 secondi · Segnale utenti ogni 10 secondi · Offline dopo 20 secondi senza segnali.';
+        'Pannello aggiornato ogni 15 secondi · Ping ogni 20 secondi · Offline dopo 90 secondi senza segnali (oppure alla chiusura comunicata dal browser).';
     } catch {
       state.presence = null;
       $('presenceInfo').textContent =
