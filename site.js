@@ -19,6 +19,14 @@
     $('gate').classList.remove('hidden');
     $('player').classList.add('hidden');
     $('message').classList.add('hidden');
+    if (id === 'signin' && window.HTBrowserIdentity) {
+      // A user without a saved browser key doesn't need a misleading login
+      // button. Native Passkey access remains available behind user choice.
+      void HTBrowserIdentity.hasIdentity().then(exists => {
+        if (!$('signin').classList.contains('hidden'))
+          $('browserSignInBtn').classList.toggle('hidden', !exists);
+      }).catch(() => {});
+    }
   }
   function readableError(error) {
     const m = {
