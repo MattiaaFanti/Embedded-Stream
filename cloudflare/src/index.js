@@ -344,7 +344,7 @@ async function route(request, env) {
   // Presence is not a login/session count: only an authenticated, active
   // user's OPEN page can refresh a short-lived heartbeat.
   const presenceTTL = 150; // Last signal must be within 2.5 minutes.
-  const presenceIdOK = v => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f-]{27,28}$/i.test(v);
+  const presenceIdOK = v => typeof v === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(v);
   if (method === 'POST' && path === '/api/presence/heartbeat') {
     const user = await auth(env, request);
     if (user.role !== 'user' || user.status !== 'active') return fail('ACCESS_NOT_ACTIVE', 403);
