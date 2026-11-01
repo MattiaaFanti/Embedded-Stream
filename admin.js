@@ -22,7 +22,7 @@
       state.presence = { ...response, ...countPresence(response.devices) };
       $('presenceInfo').textContent =
         'Aggiornamento automatico ogni 20 s · Offline dopo massimo circa 2 minuti e mezzo senza segnali. ' +
-        'Area streaming indica la pagina con player aperto, non la riproduzione effettiva.';
+        'Player aperto significa pagina con iframe HTSport visibile, non riproduzione video accertata.';
     } catch {
       state.presence = null;
       $('presenceInfo').textContent =
@@ -111,7 +111,7 @@
       ['Bannati', state.users.filter(u => u.status === 'banned').length],
       ['Licenze', summary.licenses],
       ['Dispositivi online', state.presence ? state.presence.onlineDevices : '—'],
-      ['Area streaming', state.presence ? state.presence.playerDevices : '—'],
+      ['Player aperto', state.presence ? state.presence.playerDevices : '—'],
       ['Solo homepage', state.presence ? state.presence.homeDevices : '—']
     ];
     $('stats').replaceChildren();
@@ -167,7 +167,7 @@
       const presenceLabel = !state.presence ? '—' :
         activeDevices.length ?
           ('Online · ' + activeDevices.length + ' · ' +
-            (activeDevices.some(d => d.area === 'player') ? 'Area streaming' : 'Homepage')) :
+            (activeDevices.some(d => d.area === 'player') ? 'Player aperto' : 'Homepage')) :
           'Offline';
       const presenceCell = td(row, presenceLabel);
       presenceCell.classList.add('presence-cell');
