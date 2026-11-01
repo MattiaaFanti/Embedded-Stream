@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#080c14">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https:; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'">
   <title>HTSport · Licenze e dispositivi</title>
-  <link rel="stylesheet" href="style.css?v=20261101-userdelete1">
+  <link rel="stylesheet" href="style.css?v=20261101-presence1">
 </head>
 <body>
   <main id="adminAuth" class="gate">
@@ -50,6 +50,7 @@
       <nav><a href="index.html">Apri il sito</a><button id="refreshBtn" class="smallbtn" type="button">Aggiorna</button><button id="adminLogoutBtn" class="smallbtn warn" type="button">Esci</button></nav>
     </header>
     <div id="stats" class="statrow"></div>
+    <p id="presenceInfo" class="hint presence-note" role="status" aria-live="polite">Verifica dispositivi online...</p>
     <div class="tabs">
       <button class="tab active" data-tab="users" type="button">Utenti</button>
       <button class="tab" data-tab="devices" type="button">Passkey / dispositivi</button>
@@ -59,7 +60,7 @@
     <section id="tab-users" class="box">
       <h2>Autorizzazioni e ban</h2>
       <p>Ogni utente sceglie il proprio nome e riceve automaticamente un seriale identificativo univoco. Le registrazioni rimangono in attesa fino alla tua approvazione. Il seriale non corrisponde al numero hardware del dispositivo.</p>
-      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>Seriale automatico</th><th>Stato</th><th>Passkey</th><th>Ultimo accesso</th><th>Azioni</th><th class="user-delete-heading">Elimina</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>Seriale automatico</th><th>Stato</th><th>Passkey</th><th>Presenza</th><th>Ultimo accesso</th><th>Azioni</th><th class="user-delete-heading">Elimina</th></tr></thead><tbody id="usersBody"></tbody></table></div>
     </section>
     <section id="tab-devices" class="box hidden">
       <h2>Credenziali registrate</h2>
@@ -93,6 +94,6 @@
 
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js?v=20261031-adminpw1"></script>
-  <script src="admin.js?v=20261101-approveban5"></script>
+  <script src="admin.js?v=20261101-presence1"></script>
 </body>
 </html>
