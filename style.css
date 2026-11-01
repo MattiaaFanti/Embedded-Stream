@@ -52,6 +52,10 @@ input:focus,textarea:focus,select:focus { border-color:var(--accent); box-shadow
 .statrow { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
 .stat { border:1px solid var(--line); background:var(--panel); padding:13px; border-radius:12px; min-width:140px; }
 .stat strong { display:block; font-size:25px; } .stat span { color:var(--muted); font-size:12px; }
+.presence-note { margin:0 0 16px; font-size:11px; }
+.presence-cell { font-size:12px; font-weight:650; white-space:nowrap; }
+.presence-cell.presence-online { color:#76dbad; }
+.presence-cell.presence-offline { color:#99a7bb; }
 .box { background:var(--panel); border:1px solid var(--line); padding:18px; border-radius:15px; margin-bottom:17px; }
 .tablewrap { overflow:auto; } table { width:100%; border-collapse:collapse; font-size:13px; } th { font-size:11px; letter-spacing:.07em; color:#9daec8; text-align:left; }
 th,td { border-bottom:1px solid #29344b; padding:11px 9px; vertical-align:top; }
