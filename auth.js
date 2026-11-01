@@ -71,39 +71,27 @@
     if (parts.length !== 3 || parts[0] !== '1' || !Number.isInteger(Number(parts[1])) ||
         Number(parts[1]) < 3) throw Error('WORKER_UPDATE_REQUIRED');
   }
-  // If the authenticator holds a credential registered with *any* username,
-  // verify it with the Worker and reject a second account instead of
-  // silently logging the visitor into the previous account.
-  async function detectExistingRegistration() {
-    const result = await call('/api/login/options', {});
-    let credential;
-    try {
-      credential = await getCredential(result.options);
-    } catch (e) {
-      // An authenticator may have no existing credential, or the user may
-      // cancel. Existing IDs are also passed as excludeCredentials later.
-      if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError' ||
-        e.message === 'PASSKEY_CANCELLED')) return false;
-      throw e;
-    }
-    const found = await call('/api/register/probe/verify',
-      { requestId: result.requestId, credential });
-    return found.alreadyRegistered === true;
-  }
-  async function register(username, adminSecret) {
+  // No preliminary navigator.credentials.get(): on an unregistered device
+  // this prompts for an unrelated login and can stall the signup for minutes.
+  // The server supplies excludeCredentials in registration options and
+  // verifies duplicate names and credential IDs before storing a new user.
+  async function register(username, adminSecret, onProgress) {
+    const progress = message => { if (typeof onProgress === 'function') onProgress(message); };
     const admin = adminSecret !== undefined;
     const headers = admin ? { 'X-Bootstrap-Secret': adminSecret } : undefined;
     let result;
     if (!admin) {
+      progress('Verifica connessione e versione del server...');
       await requireCurrentRegistrationWorker();
-      // The username is validated FIRST, before any native Passkey dialog.
-      // The Worker rechecks it on verification and in the INSERT itself.
+      // The username is validated BEFORE the native Passkey dialog.
+      // The Worker checks it again in verification and at insertion.
+      progress('Controllo del nome utente...');
       result = await call('/api/register/options', { username });
-      if (await detectExistingRegistration()) throw Error('PASSKEY_ALREADY_REGISTERED');
     } else {
       result = await call('/api/admin/bootstrap/options', { username }, headers);
     }
     const finish = admin ? '/api/admin/bootstrap/verify' : '/api/register/verify';
+    progress('Crea la Passkey nel messaggio del dispositivo o del browser.');
     let credential;
     try {
       credential = await makeCredential(result.options);
@@ -111,8 +99,10 @@
       if (e && e.name === 'InvalidStateError') throw Error('PASSKEY_ALREADY_REGISTERED');
       throw e;
     }
+    progress('Passkey creata. Salvataggio della registrazione...');
     const saved = await call(finish, { requestId: result.requestId, credential }, headers);
     if (saved.token) setToken(saved.token);
+    progress('Registrazione inviata.');
     return saved;
   }
   async function login() {
