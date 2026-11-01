@@ -78,3 +78,14 @@ td { overflow-wrap:anywhere; } td code { font-size:11px; color:#c6d8f7; }
 .auth-alternative[open] summary { margin-bottom:12px; color:var(--text); }
 .auth-alternative .button { width:100%; }
 .auth-alternative .hint { margin:0 0 10px; }
+
+/* Sport: onboarding before signup and controlled offline states. */
+#installFirst { margin-top:15px; }
+#installFirst .pill, #registrationAfterGuide .pill { margin-bottom:8px; }
+#installFirst h2, #registrationAfterGuide h2 { margin:8px 0 10px; font-size:19px; }
+.guide-link { display:flex; align-items:center; justify-content:center; text-decoration:none; text-align:center; }
+.stream-unavailable { position:absolute; inset:43px 0 0; z-index:5; display:flex; align-items:center; justify-content:center; padding:20px; background:#080c14; }
+.stream-unavailable-panel { max-width:430px; width:100%; border:1px solid #293348; padding:28px 24px; border-radius:18px; background:#111826; text-align:center; box-shadow:0 20px 80px #0008; }
+.stream-unavailable-panel h2 { margin:15px 0 12px; font-size:22px; }
+.stream-unavailable-panel p { margin-bottom:12px; }
+.stream-unavailable-panel .button { margin-top:14px; }
