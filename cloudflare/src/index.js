@@ -261,7 +261,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.5' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.6' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -343,7 +343,7 @@ async function route(request, env) {
 
   // Presence is not a login/session count: only an authenticated, active
   // user's OPEN page can refresh a short-lived heartbeat.
-  const presenceTTL = 150; // Last signal must be within 2.5 minutes.
+  const presenceTTL = 20; // Offline after 20 seconds without an open-page heartbeat.
   const presenceIdOK = v => typeof v === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(v);
   if (method === 'POST' && path === '/api/presence/heartbeat') {
     const user = await auth(env, request);
@@ -375,21 +375,17 @@ async function route(request, env) {
   if (method === 'GET' && path === '/api/admin/presence') {
     const cutoff = now() - presenceTTL;
     const rows = await env.DB.prepare(`
-      SELECT p.user_id,p.device_id,MAX(p.last_seen_at) AS last_seen,
-        MAX(CASE WHEN p.area='player' THEN 1 ELSE 0 END) AS in_player
+      SELECT p.user_id,p.device_id,MAX(p.last_seen_at) AS last_seen
       FROM presence_tabs p JOIN users u ON u.id=p.user_id
       WHERE p.last_seen_at>=? AND u.role='user' AND u.status='active'
       GROUP BY p.user_id,p.device_id ORDER BY last_seen DESC LIMIT 5000
     `).bind(cutoff).all();
     const devices = rows.results.map(r => ({
-      userId: r.user_id, deviceId: r.device_id,
-      area: r.in_player ? 'player' : 'home', lastSeen: r.last_seen
+      userId: r.user_id, deviceId: r.device_id, lastSeen: r.last_seen
     }));
     return ok({
       devices,
       onlineDevices: devices.length,
-      playerDevices: devices.filter(d => d.area === 'player').length,
-      homeDevices: devices.filter(d => d.area === 'home').length,
       onlineUsers: new Set(devices.map(d => d.userId)).size,
       timeoutSeconds: presenceTTL,
       updatedAt: now()
