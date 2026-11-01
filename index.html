@@ -5,17 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#080c14">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https:; frame-src https://htsport.info; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'">
-  <title>HTSport · Accesso protetto</title>
-  <link rel="stylesheet" href="style.css?v=20261101-browserkey1">
+  <title>Sport · Accesso protetto</title>
+  <link rel="stylesheet" href="style.css?v=20261101-sport-guide1">
 </head>
 <body>
   <main id="gate" class="gate">
     <section class="panel" aria-live="polite">
-      <div class="brand"><span class="brandmark">H</span> HTSPORT <span class="subbrand">ACCESS</span></div>
+      <div class="brand"><span class="brandmark">H</span> SPORT <span class="subbrand">ACCESS</span></div>
       <div id="loading" class="pane">
         <div class="spinner"></div>
         <h1>Verifica accesso</h1>
         <p>Controllo delle credenziali autorizzate.</p>
+      </div>
+      <div id="offlineGate" class="pane hidden">
+        <div class="pill">SPORT</div>
+        <h1>Connessione non disponibile</h1>
+        <p>Non è possibile raggiungere il servizio. Controlla la connessione e riprova.</p>
+        <button id="offlineRetryBtn" class="button primary" type="button">Riprova</button>
       </div>
       <div id="setup" class="pane hidden">
         <h1>Configurazione necessaria</h1>
@@ -23,10 +29,20 @@
       </div>
       <div id="signin" class="pane hidden">
         <div class="pill">ACCESSO</div>
-        <h1>Accedi a HTSport</h1>
+        <h1>Accedi a Sport</h1>
         <button id="browserSignInBtn" class="button primary hidden" type="button">Accedi</button>
         <button id="signInBtn" class="button secondary" type="button">Accedi con Passkey</button>
-        <div class="line"><span>PRIMA REGISTRAZIONE — RICHIESTA DI APPROVAZIONE</span></div>
+        <div class="line"><span>PRIMA REGISTRAZIONE</span></div>
+        <section id="installFirst" aria-label="Installazione guidata">
+          <div class="pill">PASSAGGIO 1 DI 2</div>
+          <h2>Installazione guidata</h2>
+          <p>Completa la guida prima di richiedere la registrazione.</p>
+          <a id="startInstallGuide" class="button secondary guide-link" href="https://hattrick-player-control.yaboyo95.workers.dev/" target="_blank" rel="noopener noreferrer">Apri la guida</a>
+          <button id="confirmInstallGuide" class="button primary" type="button" disabled>Ho completato l'installazione</button>
+        </section>
+        <div id="registrationAfterGuide" class="hidden">
+          <div class="pill">PASSAGGIO 2 DI 2</div>
+          <h2>Richiesta di registrazione</h2>
         <form id="registerForm" novalidate>
           <label for="username">Il tuo nome (visibile all’amministratore)</label>
           <input id="username" name="username" type="text" autocomplete="nickname" maxlength="40" required placeholder="Scrivi il tuo nome">
@@ -38,6 +54,7 @@
           <button id="registerPasskeyBtn" class="button secondary" type="button">Registra con Passkey</button>
         </details>
         <p class="hint">La registrazione richiede l'approvazione dell'amministratore.</p>
+        </div>
       </div>
 
       <div id="adminPasswordLogin" class="pane hidden">
@@ -63,18 +80,18 @@
       <div id="welcome" class="pane hidden">
         <div class="pill">DISPOSITIVO AUTORIZZATO</div>
         <h1 id="welcomeTitle">Benvenuto</h1>
-        <p>La verifica è riuscita. Apertura della guida d'installazione al primo accesso.</p>
-        <button class="button secondary" id="skipGuide" type="button">Apri subito HTSport</button>
+        <p>Il tuo accesso è stato autorizzato.</p>
+        <button class="button secondary" id="skipGuide" type="button">Apri Sport</button>
       </div>
       <p id="message" class="message hidden" role="alert"></p>
       <footer class="foot">Accesso protetto · Cloudflare D1 · <button id="openAdminLoginBtn" type="button" class="textlink">Accesso amministratore</button></footer>
     </section>
   </main>
   <section id="player" class="player hidden">
-    <header id="htsportNativeStatus" class="htsport-native-status" aria-label="Stato HTSport">
+    <header id="htsportNativeStatus" class="htsport-native-status" aria-label="Stato Sport">
       <div class="htsport-status-main">
         <span id="htsportOnlineDot" class="htsport-online-dot checking" aria-hidden="true"></span>
-        <strong>HTSport</strong>
+        <strong>Sport</strong>
         <span id="htsportOnlineText" role="status" aria-live="polite">Verifica online...</span>
         <span class="htsport-web-version" id="htsportWebVersion">Web v1.0.0</span>
       </div>
@@ -88,10 +105,18 @@
       </div>
     </header>
     <div id="frameHost" class="framehost"></div>
+    <section id="streamUnavailable" class="stream-unavailable hidden" role="status" aria-live="polite">
+      <div class="stream-unavailable-panel">
+        <div class="pill">SPORT</div>
+        <h2>Servizio temporaneamente non disponibile</h2>
+        <p>La connessione è assente oppure il contenuto non è raggiungibile in questo momento.</p>
+        <button id="streamRetryBtn" class="button primary" type="button">Riprova</button>
+      </div>
+    </section>
   </section>
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js?v=20261101-approval3"></script>
   <script src="browser-identity.js?v=20261101-browserkey2"></script>
-  <script src="site.js?v=20261101-revocation3"></script>
+  <script src="site.js?v=20261101-sport-guide1"></script>
 </body>
 </html>
