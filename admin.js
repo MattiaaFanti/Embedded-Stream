@@ -4,6 +4,9 @@
   const state = { users: [], credentials: [], licenses: [], audit: [],
     editingId: null, admin: null, presence: null };
   let presenceTimer = null, presenceBusy = false;
+  let registrationsTimer = null, registrationsBusy = false;
+  let adminMutationVersion = 0, adminMutationsInProgress = 0;
+  const REGISTRATIONS_POLL_MS = 20000;
   function countPresence(devices) {
     const list = Array.isArray(devices) ? devices : [];
     return {
@@ -49,6 +52,81 @@
     }
     void refreshPresence();
   }
+  // Check for new applications without reloading the dashboard. Use the
+  // existing authenticated admin endpoint; no Worker changes or D1 writes.
+  async function refreshRegistrations() {
+    if (!state.admin || registrationsBusy || adminMutationsInProgress ||
+        $('dashboard').classList.contains('hidden')) return;
+    registrationsBusy = true;
+    const adminId = state.admin.userId;
+    const startedAtVersion = adminMutationVersion;
+    try {
+      const response = await HTAuth.call('/api/admin/users');
+      if (!Array.isArray(response.users)) throw Error('INVALID_USERS_DATA');
+      // An in-flight response must never undo an Approva, Banna or Elimina
+      // action, a manual refresh or an administrator logout.
+      if (!state.admin || state.admin.userId !== adminId ||
+          adminMutationsInProgress || startedAtVersion !== adminMutationVersion)
+        return;
+      const previous = new Map(state.users.map(u => [u.id, u]));
+      const changed = response.users.length !== state.users.length ||
+        response.users.some((u, i) => {
+          const old = previous.get(u.id);
+          return !old || state.users[i]?.id !== u.id ||
+            u.status !== old.status || u.username !== old.username ||
+            u.role !== old.role || u.registrationSerial !== old.registrationSerial ||
+            Number(u.credentials) !== Number(old.credentials);
+        });
+      if (!changed) return;
+      state.users = response.users.map(user => ({
+        ...user,
+        // The presence poll may already know a more recent last-online time.
+        last_login_at: Math.max(Number(user.last_login_at) || 0,
+          Number(previous.get(user.id)?.last_login_at) || 0) || null
+      }));
+      renderUsers();
+      renderStats({ licenses: state.licenses.length });
+      renderAssign();
+      // Load credentials and audit only when the user list actually changes,
+      // not on every 20-second poll.
+      void refreshChangedUserDetails();
+    } catch (error) {
+      // Keep the existing dashboard visible during transient network errors;
+      // the next poll retries. Do not replace data with an empty list.
+      if (error.message === 'LOGIN_REQUIRED' || error.message === 'ADMIN_REQUIRED') {
+        if (registrationsTimer) clearInterval(registrationsTimer);
+        registrationsTimer = null;
+      }
+    } finally {
+      registrationsBusy = false;
+    }
+  }
+  async function refreshChangedUserDetails() {
+    const adminId = state.admin?.userId;
+    const version = adminMutationVersion;
+    try {
+      const [credentials, audit] = await Promise.all([
+        HTAuth.call('/api/admin/credentials'),
+        HTAuth.call('/api/admin/audit')
+      ]);
+      if (!state.admin || state.admin.userId !== adminId ||
+          adminMutationsInProgress || version !== adminMutationVersion) return;
+      if (Array.isArray(credentials.credentials)) {
+        state.credentials = credentials.credentials;
+        renderDevices();
+      }
+      if (Array.isArray(audit.entries)) {
+        state.audit = audit.entries;
+        renderAudit();
+      }
+    } catch { /* The next normal refresh can retry nonessential details. */ }
+  }
+  function startRegistrationRefresh() {
+    if (!registrationsTimer) {
+      registrationsTimer = setInterval(() => { void refreshRegistrations(); },
+        REGISTRATIONS_POLL_MS);
+    }
+  }
   function showAuth(section) {
     $('adminAuth').classList.remove('hidden');
     $('dashboard').classList.add('hidden');
@@ -72,9 +150,13 @@
   async function work(button, fn, inDashboard = false) {
     if (button.disabled) return;
     button.disabled = true;
+    if (inDashboard) { adminMutationVersion++; adminMutationsInProgress++; }
     clearErrors();
     try { await fn(); } catch (e) { error(e, inDashboard); }
-    finally { button.disabled = false; }
+    finally {
+      if (inDashboard) { adminMutationsInProgress--; adminMutationVersion++; }
+      button.disabled = false;
+    }
   }
   function td(row, value, asCode = false) {
     const cell = document.createElement('td');
@@ -119,6 +201,10 @@
     renderStats(summary); renderUsers(); renderDevices(); renderLicenses(); renderAudit(); renderAssign();
   }
   function renderStats(summary) {
+    const pendingCount = state.users.filter(u => u.role === 'user' && u.status === 'pending').length;
+    const usersTab = document.querySelector('.tab[data-tab="users"]');
+    if (usersTab) usersTab.textContent = pendingCount
+      ? 'Utenti (' + pendingCount + ' in attesa)' : 'Utenti';
     const stats = [
       ['Utenti totali', state.users.filter(u => u.role === 'user').length],
       ['In attesa', state.users.filter(u => u.status === 'pending').length],
@@ -354,6 +440,7 @@
     $('adminAuth').classList.add('hidden');
     $('dashboard').classList.remove('hidden');
     startPresenceRefresh();
+    startRegistrationRefresh();
   }
   async function start() {
     if (!HTAuth.ready) { showAuth('adminSetup'); return; }
@@ -400,11 +487,18 @@
   $('refreshBtn').addEventListener('click', function () { work(this, load, true); });
   $('adminLogoutBtn').addEventListener('click', async () => {
     if (presenceTimer) clearInterval(presenceTimer);
+    if (registrationsTimer) clearInterval(registrationsTimer);
     presenceTimer = null;
+    registrationsTimer = null;
+    adminMutationVersion++;
     try { await HTAuth.logout(); } catch { HTAuth.setToken(''); }
     state.admin = null; state.presence = null; showAuth('adminLogin');
   });
   document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) void refreshRegistrations();
+  });
+  window.addEventListener('focus', () => { void refreshRegistrations(); });
   $('clearLicenseBtn').addEventListener('click', resetLicense);
   $('licenseForm').addEventListener('submit', function (event) {
     event.preventDefault();
