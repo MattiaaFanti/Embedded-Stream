@@ -261,7 +261,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.8' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.9' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -343,7 +343,7 @@ async function route(request, env) {
 
   // Presence is not a login/session count: only an authenticated, active
   // user's OPEN page can refresh a short-lived heartbeat.
-  const presenceTTL = 20; // Offline after 20 seconds without an open-page heartbeat.
+  const presenceTTL = 90; // Allow delayed mobile/background timers; 20-second heartbeat.
   const presenceIdOK = v => typeof v === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(v);
   if (method === 'POST' && path === '/api/presence/heartbeat') {
     const user = await auth(env, request);
