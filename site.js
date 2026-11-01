@@ -245,6 +245,12 @@
     event.preventDefault();
     void requestRegistration();
   });
+  $('username').addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void requestRegistration();
+    }
+  });
   $('pendingCheck').addEventListener('click', function () {
     runButton(this, async () => {
       if (!HTAuth.getToken()) await HTAuth.login();
