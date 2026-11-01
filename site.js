@@ -9,12 +9,21 @@
     $('player').classList.add('hidden');
     $('message').classList.add('hidden');
   }
-  function message(error) {
+  function readableError(error) {
     const m = {
       SERVER_NOT_CONFIGURED: 'Il servizio Cloudflare non è ancora configurato.',
       LOGIN_REQUIRED: 'Sessione scaduta. Accedi con la tua Passkey.',
       BANNED: 'Accesso disabilitato dall’amministratore.',
       PASSKEY_NOT_SUPPORTED: 'Questo browser non supporta le Passkey richieste.',
+      PASSKEY_CANCELLED: 'Creazione della Passkey annullata. La registrazione non è stata inviata.',
+      NotAllowedError: 'Operazione Passkey annullata, non autorizzata o scaduta. Verifica la richiesta sul dispositivo e riprova.',
+      AbortError: 'Richiesta Passkey interrotta. Riprova.',
+      SecurityError: 'Il browser ha bloccato la Passkey per motivi di sicurezza. Apri la pagina direttamente tramite HTTPS.',
+      NotSupportedError: 'Questo dispositivo non supporta la Passkey richiesta.',
+      InvalidStateError: 'Questa Passkey è già registrata. Usa Accedi con Passkey.',
+      TypeError: 'La richiesta Passkey non è supportata o non è valida per questo dispositivo.',
+      HTTP_404: 'Il Worker Cloudflare non ha ancora le API di registrazione aggiornate.',
+      HTTP_503: 'Il server delle registrazioni non è disponibile.',
       DEVICE_REVOKED_OR_UNKNOWN: 'Passkey revocata oppure non registrata.',
       PASSKEY_INVALID: 'Autenticazione non valida. Riprova.',
       PASSKEY_ALREADY_REGISTERED: 'Questa Passkey è già registrata. Usa Accedi con Passkey anziché creare un altro account.',
@@ -27,14 +36,17 @@
       ADMIN_PASSWORD_NOT_CONFIGURED: 'Password amministratore non configurata su Cloudflare.',
       ADMIN_UNAVAILABLE: 'Amministratore non disponibile: contatta il proprietario del sito.'
     };
-    $('message').textContent = m[error.message] || error.message || String(error);
+    return m[error.message] || m[error.name] || error.message || String(error);
+  }
+  function message(error) {
+    $('message').textContent = readableError(error);
     $('message').classList.remove('hidden');
   }
-  function runButton(button, task) {
+  function runButton(button, task, onError = message) {
     if (button.disabled) return;
     button.disabled = true;
     $('message').classList.add('hidden');
-    Promise.resolve().then(task).catch(message).finally(() => button.disabled = false);
+    Promise.resolve().then(task).catch(onError).finally(() => button.disabled = false);
   }
   // Barra affidabile: sempre visibile dopo l'autorizzazione.
   // Se lo userscript originale crea davvero la sua barra nello stesso DOM,
@@ -177,14 +189,22 @@
   });
   $('registerForm').addEventListener('submit', function (event) {
     event.preventDefault();
-    const b = this.querySelector('button');
+    const b = this.querySelector('button[type="submit"]');
+    const status = $('registerStatus');
+    status.classList.remove('hidden', 'registration-error');
+    status.textContent = 'Avvio della registrazione...';
     runButton(b, async () => {
       const username = $('username').value.trim();
-      const result = await HTAuth.register(username);
+      const result = await HTAuth.register(username, undefined, step => {
+        status.textContent = step;
+      });
       account = result;
       $('pendingName').textContent = 'Utente: ' + result.username;
       show('pending');
       $('pendingFeedback').classList.add('hidden');
+    }, error => {
+      status.textContent = readableError(error);
+      status.classList.add('registration-error');
     });
   });
   $('pendingCheck').addEventListener('click', function () {
