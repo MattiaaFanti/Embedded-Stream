@@ -261,7 +261,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.3' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.4' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -363,7 +363,7 @@ async function route(request, env) {
   const statusRoute = path.match(/^\/api\/admin\/users\/([a-f0-9-]+)\/status$/i);
   if (method === 'POST' && statusRoute) {
     const target = statusRoute[1], b = await readJSON(request);
-    if (!['pending','active','banned'].includes(b.status)) return fail('INVALID_STATUS');
+    if (!['active','banned'].includes(b.status)) return fail('INVALID_STATUS');
     if (target === admin.id) return fail('CANNOT_MODIFY_SELF', 403);
     const user = await env.DB.prepare('SELECT id,role FROM users WHERE id=?').bind(target).first();
     if (!user || user.role === 'admin') return fail('USER_NOT_FOUND', 404);
