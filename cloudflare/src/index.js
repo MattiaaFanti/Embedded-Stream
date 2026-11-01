@@ -177,6 +177,37 @@ async function insertRegistration(env, username, role, status, info, userId) {
   if (result[0].meta.changes !== 1) throw new Error('USERNAME_ALREADY_REGISTERED');
   if (result[1].meta.changes !== 1) throw new Error('REGISTRATION_FAILED');
 }
+
+/* Firefox browser identity: proof of possession of a non-exportable
+ * ECDSA P-256 private key stored locally in IndexedDB. Not a hardware ID.
+ * A fresh server challenge is signed for EVERY browser-key login. */
+function browserPublicKey(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      value.kty !== 'EC' || value.crv !== 'P-256' ||
+      !/^[A-Za-z0-9_-]{43}$/.test(value.x || '') ||
+      !/^[A-Za-z0-9_-]{43}$/.test(value.y || '')) throw new Error('INVALID_BROWSER_KEY');
+  return { kty: 'EC', crv: 'P-256', x: value.x, y: value.y };
+}
+async function browserKeyId(jwk) {
+  return 'bk_' + await sha('htsport-firefox-key-v1:' + jwk.x + ':' + jwk.y);
+}
+async function verifyBrowserSignature(jwk, signature, challengeValue, purpose) {
+  if (typeof signature !== 'string' || !/^[A-Za-z0-9_-]{80,200}$/.test(signature))
+    throw new Error('INVALID_BROWSER_SIGNATURE');
+  const publicKey = await crypto.subtle.importKey('jwk', browserPublicKey(jwk),
+    { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  const message = enc.encode('HTSPORT:browser-key:v1:' + purpose + ':' + challengeValue);
+  const verified = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' },
+    publicKey, from64(signature), message);
+  if (!verified) throw new Error('INVALID_BROWSER_SIGNATURE');
+}
+async function browserChallenge(env, purpose, payload) {
+  const value = b64u(randomBytes(32));
+  return {
+    requestId: await challenge(env, purpose, value, { ...payload, browserKey: true }),
+    challenge: value
+  };
+}
 async function adminExists(env) {
   const row = await env.DB.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").first();
   return !!row;
@@ -261,7 +292,94 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.9' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.10' });
+
+  // Browser-key enrollment never opens a native Passkey dialog. The same
+  // saved IndexedDB key is reused for future enrollment after account deletion.
+  if (method === 'POST' && path === '/api/browser/register/options') {
+    await rate(env, request, 'browser-register', 15, 3600);
+    const body = await readJSON(request);
+    const username = validateName(body.username);
+    const publicKey = browserPublicKey(body.publicKey);
+    const keyId = await browserKeyId(publicKey);
+    const duplicate = await env.DB.prepare('SELECT id FROM browser_credentials WHERE id=?').bind(keyId).first();
+    if (duplicate) return fail('BROWSER_ALREADY_REGISTERED', 409);
+    const taken = await env.DB.prepare(
+      'SELECT id FROM users WHERE lower(trim(username))=lower(trim(?)) LIMIT 1'
+    ).bind(username).first();
+    if (taken) return fail('USERNAME_ALREADY_REGISTERED', 409);
+    return ok({
+      ...(await browserChallenge(env, 'register', { username, userId: uuid(), keyId })),
+      keyId
+    });
+  }
+  if (method === 'POST' && path === '/api/browser/register/verify') {
+    const body = await readJSON(request);
+    const ctx = await consume(env, body.requestId, 'register');
+    if (!ctx.browserKey || !ctx.username || !ctx.userId) return fail('INVALID_BROWSER_CHALLENGE');
+    const publicKey = browserPublicKey(body.publicKey);
+    const keyId = await browserKeyId(publicKey);
+    if (keyId !== ctx.keyId) return fail('BROWSER_KEY_MISMATCH');
+    await verifyBrowserSignature(publicKey, body.signature, ctx.expectedChallenge, 'register');
+    const timestamp = now();
+    const result = await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO users(id,username,role,status,created_at,updated_at)
+        SELECT ?,?,?,?,?,? WHERE NOT EXISTS (
+          SELECT 1 FROM users WHERE lower(trim(username))=lower(trim(?))
+        )
+      `).bind(ctx.userId, ctx.username, 'user', 'pending', timestamp, timestamp, ctx.username),
+      env.DB.prepare(`
+        INSERT INTO browser_credentials(id,user_id,public_key_jwk,created_at)
+        SELECT ?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)
+        AND NOT EXISTS (SELECT 1 FROM browser_credentials WHERE id=?)
+      `).bind(keyId, ctx.userId, JSON.stringify(publicKey), timestamp, ctx.userId, keyId)
+    ]);
+    if (result[0].meta.changes !== 1) return fail('USERNAME_ALREADY_REGISTERED', 409);
+    if (result[1].meta.changes !== 1) return fail('BROWSER_ALREADY_REGISTERED', 409);
+    await audit(env, ctx.userId, 'register_browser', ctx.userId);
+    const session = await issueSession(env, ctx.userId);
+    return ok({
+      userId: ctx.userId, username: ctx.username, role: 'user',
+      status: 'pending', ...session
+    }, 201);
+  }
+  if (method === 'POST' && path === '/api/browser/login/options') {
+    await rate(env, request, 'browser-login', 90, 3600);
+    const body = await readJSON(request);
+    if (typeof body.keyId !== 'string' || !/^bk_[A-Za-z0-9_-]{43}$/.test(body.keyId))
+      return fail('INVALID_BROWSER_KEY');
+    const found = await env.DB.prepare(
+      'SELECT id FROM browser_credentials WHERE id=? AND revoked_at IS NULL'
+    ).bind(body.keyId).first();
+    if (!found) return fail('BROWSER_KEY_UNKNOWN', 404);
+    return ok(await browserChallenge(env, 'login', { keyId: body.keyId }));
+  }
+  if (method === 'POST' && path === '/api/browser/login/verify') {
+    const body = await readJSON(request);
+    const ctx = await consume(env, body.requestId, 'login');
+    if (!ctx.browserKey || !ctx.keyId) return fail('INVALID_BROWSER_CHALLENGE');
+    const row = await env.DB.prepare(`
+      SELECT b.id,b.public_key_jwk,b.user_id,u.role,u.username,u.status
+      FROM browser_credentials b JOIN users u ON u.id=b.user_id
+      WHERE b.id=? AND b.revoked_at IS NULL
+    `).bind(ctx.keyId).first();
+    if (!row) return fail('BROWSER_KEY_UNKNOWN', 404);
+    if (row.status === 'banned') return fail('BANNED', 403);
+    await verifyBrowserSignature(JSON.parse(row.public_key_jwk),
+      body.signature, ctx.expectedChallenge, 'login');
+    await env.DB.batch([
+      env.DB.prepare('UPDATE browser_credentials SET last_used_at=? WHERE id=?')
+        .bind(now(), row.id),
+      env.DB.prepare('UPDATE users SET last_login_at=? WHERE id=?')
+        .bind(now(), row.user_id)
+    ]);
+    const session = await issueSession(env, row.user_id);
+    return ok({
+      userId: row.user_id, username: row.username,
+      role: row.role, status: row.status, ...session
+    });
+  }
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -428,13 +546,19 @@ async function route(request, env) {
   }
   if (method === 'GET' && path === '/api/admin/users') {
     const users = await env.DB.prepare(
-      "SELECT u.id,u.username,u.role,u.status,u.created_at,u.last_login_at,COUNT(c.id) AS credentials FROM users u LEFT JOIN credentials c ON c.user_id=u.id AND c.revoked_at IS NULL GROUP BY u.id ORDER BY u.created_at DESC LIMIT 500"
+      "SELECT u.id,u.username,u.role,u.status,u.created_at,u.last_login_at,((SELECT COUNT(*) FROM credentials c WHERE c.user_id=u.id AND c.revoked_at IS NULL) + (SELECT COUNT(*) FROM browser_credentials b WHERE b.user_id=u.id AND b.revoked_at IS NULL)) AS credentials FROM users u ORDER BY u.created_at DESC LIMIT 500"
     ).all();
     return ok({ users: users.results.map(u => ({ ...u, registrationSerial: registrationSerial(u.id) })) });
   }
   if (method === 'GET' && path === '/api/admin/credentials') {
     const items = await env.DB.prepare(
-      'SELECT c.id,c.user_id,c.created_at,c.last_used_at,c.device_type,c.backed_up,c.revoked_at,u.username FROM credentials c JOIN users u ON u.id=c.user_id ORDER BY c.created_at DESC LIMIT 500'
+      `SELECT id,user_id,created_at,last_used_at,device_type,backed_up,revoked_at,username,credential_kind FROM (
+        SELECT c.id,c.user_id,c.created_at,c.last_used_at,c.device_type,c.backed_up,c.revoked_at,u.username,'passkey' AS credential_kind
+        FROM credentials c JOIN users u ON u.id=c.user_id
+        UNION ALL
+        SELECT b.id,b.user_id,b.created_at,b.last_used_at,'Firefox · chiave browser' AS device_type,0 AS backed_up,b.revoked_at,u.username,'browser' AS credential_kind
+        FROM browser_credentials b JOIN users u ON u.id=b.user_id
+      ) ORDER BY created_at DESC LIMIT 500`
     ).all();
     return ok({ credentials: items.results });
   }
@@ -478,9 +602,13 @@ async function route(request, env) {
   }
   const revokeRoute = path.match(/^\/api\/admin\/credentials\/([A-Za-z0-9_-]+)\/revoke$/);
   if (method === 'POST' && revokeRoute) {
-    const cred = await env.DB.prepare('SELECT user_id FROM credentials WHERE id=?').bind(revokeRoute[1]).first();
+    const browserCred = revokeRoute[1].startsWith('bk_');
+    const table = browserCred ? 'browser_credentials' : 'credentials';
+    const cred = await env.DB.prepare('SELECT user_id FROM ' + table + ' WHERE id=?')
+      .bind(revokeRoute[1]).first();
     if (!cred || cred.user_id === admin.id) return fail('CREDENTIAL_NOT_FOUND', 404);
-    await env.DB.prepare('UPDATE credentials SET revoked_at=? WHERE id=? AND revoked_at IS NULL').bind(now(), revokeRoute[1]).run();
+    await env.DB.prepare('UPDATE ' + table + ' SET revoked_at=? WHERE id=? AND revoked_at IS NULL')
+      .bind(now(), revokeRoute[1]).run();
     await env.DB.prepare('UPDATE sessions SET revoked_at=? WHERE user_id=?').bind(now(), cred.user_id).run();
     await audit(env, admin.id, 'credential_revoked', revokeRoute[1]);
     return ok({ revoked: true });
