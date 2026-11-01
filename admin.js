@@ -260,7 +260,7 @@
       const actions = document.createElement('td'); row.append(actions);
       if (!c.revoked_at && c.user_id !== state.admin.userId) {
         button(actions, 'Revoca', async () => {
-          if (!confirm('Revocare questa Passkey? Le sessioni dell’utente verranno chiuse.')) return;
+          if (!confirm('Revocare questa credenziale? Le sessioni dell’utente verranno chiuse.')) return;
           const response = await HTAuth.call('/api/admin/credentials/' + encodeURIComponent(c.id) + '/revoke', {});
           if (!response.revoked) throw Error('Revoca non confermata dal server.');
           c.revoked_at = Math.floor(Date.now() / 1000);
