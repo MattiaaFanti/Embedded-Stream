@@ -209,7 +209,7 @@ async function browserChallenge(env, purpose, payload) {
   };
 }
 function missingBrowserTable(error) {
-  return /no such table:?\\s*browser_credentials/i.test(String(error && error.message || error));
+  return /no such table:?\s*browser_credentials/i.test(String(error && error.message || error));
 }
 async function adminExists(env) {
   const row = await env.DB.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").first();
