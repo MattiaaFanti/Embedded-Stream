@@ -177,7 +177,7 @@
       td(row, u.registrationSerial || u.id, true); statusCell(row, u.status);
       const activeDevices = present.get(u.id) || [];
       const presenceLabel = !state.presence ? '—' :
-        activeDevices.length ? ('Online · ' + activeDevices.length) : 'Offline';
+        activeDevices.length ? 'Online' : 'Offline';
       const presenceCell = td(row, presenceLabel);
       presenceCell.classList.add('presence-cell');
       if (state.presence) presenceCell.classList.add(activeDevices.length ? 'presence-online' : 'presence-offline');
