@@ -184,7 +184,9 @@
   }
   function startPresence() {
     if (!account || account.role !== 'user' || account.status !== 'active') return;
-    if (!presenceTimer) presenceTimer = setInterval(() => { void presenceBeat(); }, 25000);
+    // Keep heartbeats running even if a stream remains open for hours.
+    // Never tie presence to clicks, page navigation or playback events.
+    if (!presenceTimer) presenceTimer = setInterval(() => { void presenceBeat(); }, 5000);
     void presenceBeat();
   }
   async function stopPresence() {
