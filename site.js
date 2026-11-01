@@ -23,7 +23,7 @@
   function readableError(error) {
     const m = {
       SERVER_NOT_CONFIGURED: 'Il servizio Cloudflare non è ancora configurato.',
-      LOGIN_REQUIRED: 'Sessione scaduta. Accedi con la tua Passkey.',
+      LOGIN_REQUIRED: 'Sessione scaduta. Accedi usando il metodo con cui hai registrato Firefox.',
       LOGIN_CREDENTIALS_UNAVAILABLE: 'Nessuna Passkey attiva associata al nome indicato. Usa esattamente il nome dell’ultima registrazione approvata.',
       BANNED: 'Accesso disabilitato dall’amministratore.',
       PASSKEY_NOT_SUPPORTED: 'Questo browser non supporta le Passkey richieste.',
@@ -39,7 +39,15 @@
       DEVICE_REVOKED_OR_UNKNOWN: 'La Passkey selezionata non corrisponde a una credenziale attiva sul server. Per la nuova registrazione, accedi indicando il nome esatto dell’account approvato.',
       PASSKEY_INVALID: 'Autenticazione non valida. Riprova.',
       PASSKEY_ALREADY_REGISTERED: 'Questa Passkey è già registrata. Usa Accedi con Passkey anziché creare un altro account.',
-      USERNAME_ALREADY_REGISTERED: 'Nome utente già registrato. Scegli un altro nome oppure accedi con la tua Passkey.',
+      USERNAME_ALREADY_REGISTERED: 'Nome già registrato. Accedi con la credenziale esistente oppure scegli un altro nome.',
+      BROWSER_KEY_NOT_SUPPORTED: 'Firefox non supporta la chiave crittografica richiesta in questo contesto HTTPS.',
+      BROWSER_STORAGE_UNAVAILABLE: 'Impossibile salvare la chiave Firefox. Verifica che la navigazione privata o il blocco dell’archiviazione non impediscano IndexedDB.',
+      BROWSER_KEY_CORRUPT: 'La chiave salvata in Firefox non è più valida. Non viene sostituita automaticamente per evitare di cambiare identificativo.',
+      BROWSER_KEY_MISSING: 'Questo Firefox non è stato ancora registrato. Usa il modulo di prima registrazione.',
+      BROWSER_KEY_UNKNOWN: 'La chiave di Firefox non è associata a un account attivo nel database. Se l’account è stato eliminato, puoi registrarlo nuovamente.',
+      BROWSER_ALREADY_REGISTERED: 'Questo Firefox è già registrato. Usa Accedi da questo Firefox anziché creare un altro account.',
+      BROWSER_WORKER_UPDATE_REQUIRED: 'Il Worker Cloudflare deve essere aggiornato almeno alla versione 1.4.10 e occorre applicare la nuova tabella D1.',
+      INVALID_BROWSER_SIGNATURE: 'La verifica crittografica del browser non è riuscita.',
       WORKER_UPDATE_REQUIRED: 'Il Worker Cloudflare deve essere aggiornato almeno alla versione 1.4.2 per registrazioni e controlli di approvazione corretti.',
       REGISTRATION_FAILED: 'Registrazione non riuscita. Non è stato creato alcun nuovo account.',
       REGISTRATION_CAPACITY_REACHED: 'Il numero massimo di registrazioni è stato raggiunto. Contatta l’amministratore.',
@@ -265,9 +273,32 @@
       redirectTimer = setTimeout(() => location.assign(HTAuth.installUrl), 1500);
     } else stream();
   }
+  let automaticBrowserLoginTried = false;
   async function refresh(checked = false) {
     if (!HTAuth.ready) { show('setup'); return; }
     if (!HTAuth.getToken()) {
+      // Only the IndexedDB key can be checked silently. Never trigger a
+      // navigator.credentials.get() Passkey prompt automatically.
+      if (!automaticBrowserLoginTried && window.HTBrowserIdentity) {
+        automaticBrowserLoginTried = true;
+        if (await HTBrowserIdentity.hasIdentity()) {
+          try {
+            await HTBrowserIdentity.login();
+            return await refresh(checked);
+          } catch (err) {
+            if (err.message === 'BANNED') {
+              setPendingName('');
+              show('signin'); message(err); return;
+            }
+            // Deleted account: retain the SAME local key for re-enrollment.
+            // Unsupported old Worker: keep the legacy Passkey route usable.
+            if (!['BROWSER_KEY_UNKNOWN','BROWSER_WORKER_UPDATE_REQUIRED',
+                'HTTP_404'].includes(err.message)) {
+              show('signin'); message(err); return;
+            }
+          }
+        }
+      }
       const pending = getPendingName();
       if (pending) {
         $('pendingName').textContent = 'Utente: ' + pending;
@@ -286,7 +317,7 @@
         if (e.message === 'LOGIN_REQUIRED' && getPendingName()) {
           $('pendingName').textContent = 'Utente: ' + getPendingName();
           show('pending');
-          $('pendingFeedback').textContent = 'Sessione da ripristinare. Premi Controlla autorizzazione per accedere con la Passkey della nuova registrazione.';
+          $('pendingFeedback').textContent = 'Sessione da ripristinare. Premi Controlla autorizzazione per verificare la credenziale associata alla registrazione.';
           $('pendingFeedback').classList.remove('hidden');
         } else {
           if (e.message === 'BANNED') setPendingName('');
@@ -296,25 +327,30 @@
       } else { show('signin'); message(e); }
     }
   }
+  // A browser key is checked without user-facing native authentication.
+  // Passkeys remain strictly opt-in through the explicit Passkey button.
+  $('browserSignInBtn').addEventListener('click', function () {
+    runButton(this, async () => {
+      if (!window.HTBrowserIdentity) throw Error('BROWSER_KEY_NOT_SUPPORTED');
+      await HTBrowserIdentity.login();
+      await refresh();
+    });
+  });
   $('signInBtn').addEventListener('click', function () {
     runButton(this, async () => {
-      // Normal login is identified solely by the verified Passkey.
-      // Username-scoped login is reserved for legacy approval recovery.
       await HTAuth.login();
       await refresh();
     });
   });
-  // Use a direct click handler: native HTML constraint validation must
-  // never silently suppress the first step of a Passkey signup.
   let registrationInProgress = false;
-  async function requestRegistration() {
-    const button = $('registerBtn');
+  async function requestRegistration(method = 'browser') {
+    const button = method === 'passkey' ? $('registerPasskeyBtn') : $('registerBtn');
     const status = $('registerStatus');
     const username = $('username').value.trim().replace(/\s+/g, ' ');
     status.classList.remove('hidden', 'registration-error');
     $('message').classList.add('hidden');
     if (registrationInProgress) {
-      status.textContent = 'Registrazione già avviata. Completa la richiesta Passkey sul dispositivo.';
+      status.textContent = 'Registrazione già avviata.';
       return;
     }
     if (username.length < 2 || username.length > 40 || /[<>\\]/.test(username)) {
@@ -328,21 +364,46 @@
       status.classList.add('registration-error');
       return;
     }
-    if (!HTAuth.supported()) {
-      status.textContent = 'Questo browser o dispositivo non supporta le Passkey. Apri il sito in un browser aggiornato con supporto WebAuthn.';
+    if (method === 'passkey' ? !HTAuth.supported() :
+        (!window.HTBrowserIdentity || !HTBrowserIdentity.supported())) {
+      status.textContent = method === 'passkey'
+        ? 'Questo browser non supporta le Passkey.'
+        : 'Questo Firefox non supporta l’archiviazione crittografica richiesta.';
       status.classList.add('registration-error');
       return;
     }
     registrationInProgress = true;
-    button.disabled = true;
+    $('registerBtn').disabled = true;
+    $('registerPasskeyBtn').disabled = true;
     button.setAttribute('aria-busy', 'true');
-    const defaultLabel = 'Richiedi registrazione con Passkey';
+    const defaultLabel = method === 'passkey' ? 'Registra con Passkey' : 'Richiedi registrazione';
     button.textContent = 'Registrazione in corso...';
     status.textContent = 'Avvio della registrazione...';
     try {
-      const result = await HTAuth.register(username, undefined, step => {
-        status.textContent = step;
-      });
+      let result;
+      if (method === 'passkey') {
+        // A native Passkey dialog opens ONLY because this optional button
+        // was explicitly selected by the user.
+        result = await HTAuth.register(username, undefined, step => {
+          status.textContent = step;
+        });
+      } else {
+        // Existing Firefox identity is reused, never rotated or silently
+        // regenerated. If it is already enrolled, log in instead.
+        if (await HTBrowserIdentity.hasIdentity()) {
+          try {
+            await HTBrowserIdentity.login();
+            await refresh();
+            return;
+          } catch (err) {
+            if (err.message !== 'BROWSER_KEY_UNKNOWN') throw err;
+            // The former account was deleted. Reuse the exact same key.
+          }
+        }
+        result = await HTBrowserIdentity.register(username, step => {
+          status.textContent = step;
+        });
+      }
       account = result;
       setPendingName(result.username);
       $('pendingName').textContent = 'Utente: ' + result.username;
@@ -353,12 +414,14 @@
       status.classList.add('registration-error');
     } finally {
       registrationInProgress = false;
-      button.disabled = false;
+      $('registerBtn').disabled = false;
+      $('registerPasskeyBtn').disabled = false;
       button.removeAttribute('aria-busy');
       button.textContent = defaultLabel;
     }
   }
   $('registerBtn').addEventListener('click', () => { void requestRegistration(); });
+  $('registerPasskeyBtn').addEventListener('click', () => { void requestRegistration('passkey'); });
   $('registerForm').addEventListener('submit', event => {
     event.preventDefault();
     void requestRegistration();
@@ -377,11 +440,19 @@
       feedback.classList.add('hidden');
       try {
         if (!HTAuth.getToken()) {
-          const name = (account && account.username) || getPendingName();
-          if (!name) throw Error('LOGIN_REQUIRED');
-          // Legacy registrations did not receive a session after WebAuthn
-          // creation: only offer credentials belonging to the NEW account.
-          await HTAuth.login(name);
+          if (window.HTBrowserIdentity && await HTBrowserIdentity.hasIdentity()) {
+            try {
+              await HTBrowserIdentity.login();
+            } catch (e) {
+              if (e.message !== 'BROWSER_KEY_UNKNOWN') throw e;
+            }
+          }
+          if (!HTAuth.getToken()) {
+            const name = (account && account.username) || getPendingName();
+            if (!name) throw Error('LOGIN_REQUIRED');
+            // Only legacy Passkey registrations need a native prompt.
+            await HTAuth.login(name);
+          }
         }
         await refresh(true);
       } catch (error) {
