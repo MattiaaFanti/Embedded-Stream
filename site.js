@@ -45,6 +45,7 @@
       HTTP_404: 'Il Worker Cloudflare non ha ancora le API di registrazione aggiornate.',
       HTTP_503: 'Il server delle registrazioni non è disponibile.',
       DEVICE_REVOKED_OR_UNKNOWN: 'La Passkey selezionata non corrisponde a una credenziale attiva sul server. Per la nuova registrazione, accedi indicando il nome esatto dell’account approvato.',
+      ACCESS_REVOKED: 'Accesso revocato o sessione non più valida. Il player è stato chiuso.',
       PASSKEY_INVALID: 'Autenticazione non valida. Riprova.',
       PASSKEY_ALREADY_REGISTERED: 'Questa Passkey è già registrata. Usa Accedi con Passkey anziché creare un altro account.',
       USERNAME_ALREADY_REGISTERED: 'Nome già registrato. Accedi con la credenziale esistente oppure scegli un altro nome.',
@@ -177,6 +178,45 @@
   function currentPresenceArea() {
     return $('player').classList.contains('hidden') ? 'home' : 'player';
   }
+  function invalidSession(error) {
+    return ['LOGIN_REQUIRED', 'BANNED', 'ACCESS_NOT_ACTIVE', 'HTTP_401', 'HTTP_403']
+      .includes(error && error.message);
+  }
+  function revokeVisibleAccess(error) {
+    // A deleted/banned account MUST lose the already-loaded iframe. Merely
+    // returning to the gate leaves a video running inside the hidden iframe.
+    if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+    if (redirectTimer) { clearTimeout(redirectTimer); redirectTimer = null; }
+    $('frameHost').replaceChildren();
+    HTAuth.setToken('');
+    account = null;
+    presenceBusy = false;
+    setPendingName('');
+    markLoggedOut(); // Never re-login silently after an admin revocation.
+    syncStatusBar();
+    show('signin');
+    message(Error(error && error.message === 'BANNED' ? 'BANNED' : 'ACCESS_REVOKED'));
+  }
+  let accessCheckBusy = false;
+  async function checkVisibleAccess() {
+    if (accessCheckBusy || !account || account.status !== 'active' || !HTAuth.getToken())
+      return;
+    accessCheckBusy = true;
+    const originalToken = HTAuth.getToken();
+    try {
+      const user = await HTAuth.call('/api/me');
+      if (originalToken !== HTAuth.getToken()) return;
+      if (user.status !== 'active' || user.userId !== account?.userId)
+        revokeVisibleAccess(Error('ACCESS_REVOKED'));
+    } catch (error) {
+      if (originalToken === HTAuth.getToken() && invalidSession(error))
+        revokeVisibleAccess(error);
+      // Temporary connectivity failures must not be mistaken for a ban.
+    } finally {
+      accessCheckBusy = false;
+    }
+  }
   async function presenceBeat() {
     if (!presenceTimer || presenceBusy || presenceUnsupported ||
         !account || account.role !== 'user' || account.status !== 'active' ||
@@ -189,8 +229,12 @@
         area: sentArea
       });
     } catch (error) {
-      // An old Worker must not break the streaming application.
-      if (error.message === 'HTTP_404') presenceUnsupported = true;
+      if (invalidSession(error)) {
+        revokeVisibleAccess(error);
+      } else if (error.message === 'HTTP_404') {
+        // An old Worker must not break streaming or its existing Passkey login.
+        presenceUnsupported = true;
+      }
     } finally {
       presenceBusy = false;
       // Login may open the player while the initial homepage heartbeat
@@ -230,7 +274,10 @@
     } catch {}
   });
   window.addEventListener('pageshow', event => {
-    if (event.persisted) void presenceBeat();
+    if (event.persisted) { void presenceBeat(); void checkVisibleAccess(); }
+  });
+  window.addEventListener('focus', () => {
+    if (!$('player').classList.contains('hidden')) void checkVisibleAccess();
   });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) void presenceBeat();
@@ -255,6 +302,10 @@
       frame.setAttribute('allowfullscreen', '');
       frame.setAttribute('webkitallowfullscreen', '');
       frame.referrerPolicy = 'strict-origin-when-cross-origin';
+      // Cross-origin iframe navigation (e.g. homepage -> stream) cannot be
+      // intercepted before the click. Check authorization on each frame load,
+      // in addition to the 20-second heartbeat revocation check.
+      frame.addEventListener('load', () => { void checkVisibleAccess(); });
       $('frameHost').append(frame);
     }
   }
