@@ -8,8 +8,6 @@
     const list = Array.isArray(devices) ? devices : [];
     return {
       devices: list, onlineDevices: list.length,
-      playerDevices: list.filter(d => d.area === 'player').length,
-      homeDevices: list.filter(d => d.area === 'home').length,
       onlineUsers: new Set(list.map(d => d.userId)).size
     };
   }
@@ -21,8 +19,7 @@
       if (!Array.isArray(response.devices)) throw Error('INVALID_PRESENCE_DATA');
       state.presence = { ...response, ...countPresence(response.devices) };
       $('presenceInfo').textContent =
-        'Aggiornamento automatico ogni 20 s · Offline dopo massimo circa 2 minuti e mezzo senza segnali. ' +
-        'Player aperto significa pagina con iframe HTSport visibile, non riproduzione video accertata.';
+        'Aggiornamento automatico ogni 5 secondi · Offline dopo 20 secondi senza segnali dalla pagina aperta.';
     } catch {
       state.presence = null;
       $('presenceInfo').textContent =
@@ -37,7 +34,7 @@
     if (!presenceTimer) {
       presenceTimer = setInterval(() => {
         if (!$('dashboard').classList.contains('hidden')) void refreshPresence();
-      }, 20000);
+      }, 5000);
     }
     void refreshPresence();
   }
@@ -110,9 +107,7 @@
       ['Attivi', state.users.filter(u => u.status === 'active' && u.role === 'user').length],
       ['Bannati', state.users.filter(u => u.status === 'banned').length],
       ['Licenze', summary.licenses],
-      ['Dispositivi online', state.presence ? state.presence.onlineDevices : '—'],
-      ['Player aperto', state.presence ? state.presence.playerDevices : '—'],
-      ['Solo homepage', state.presence ? state.presence.homeDevices : '—']
+      ['Dispositivi online', state.presence ? state.presence.onlineDevices : '—']
     ];
     $('stats').replaceChildren();
     stats.forEach(([label, value]) => {
@@ -162,13 +157,9 @@
       const row = document.createElement('tr');
       td(row, u.username + (u.role === 'admin' ? ' (admin)' : ''));
       td(row, u.registrationSerial || u.id, true); statusCell(row, u.status);
-      td(row, u.credentials);
       const activeDevices = present.get(u.id) || [];
       const presenceLabel = !state.presence ? '—' :
-        activeDevices.length ?
-          ('Online · ' + activeDevices.length + ' · ' +
-            (activeDevices.some(d => d.area === 'player') ? 'Player aperto' : 'Homepage')) :
-          'Offline';
+        activeDevices.length ? ('Online · ' + activeDevices.length) : 'Offline';
       const presenceCell = td(row, presenceLabel);
       presenceCell.classList.add('presence-cell');
       if (state.presence) presenceCell.classList.add(activeDevices.length ? 'presence-online' : 'presence-offline');
