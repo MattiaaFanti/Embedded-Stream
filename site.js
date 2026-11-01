@@ -222,6 +222,7 @@
         !account || account.role !== 'user' || account.status !== 'active' ||
         !HTAuth.getToken()) return;
     presenceBusy = true;
+    const checkedToken = HTAuth.getToken();
     const sentArea = currentPresenceArea();
     try {
       await HTAuth.call('/api/presence/heartbeat', {
@@ -229,6 +230,9 @@
         area: sentArea
       });
     } catch (error) {
+      // Never invalidate a freshly signed-in account because an older
+      // heartbeat (from a different session) failed later.
+      if (checkedToken !== HTAuth.getToken()) return;
       if (invalidSession(error)) {
         revokeVisibleAccess(error);
       } else if (error.message === 'HTTP_404') {
@@ -278,6 +282,12 @@
   });
   window.addEventListener('focus', () => {
     if (!$('player').classList.contains('hidden')) void checkVisibleAccess();
+  });
+  // Focusing the cross-origin iframe typically blurs the parent document.
+  // This adds a check when a person enters the embedded stream site, without
+  // attempting to read or intercept inaccessible cross-origin clicks.
+  window.addEventListener('blur', () => {
+    if (document.activeElement?.id === 'htsport-frame') void checkVisibleAccess();
   });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) void presenceBeat();
