@@ -22,15 +22,10 @@
         <p>Il server delle licenze non è ancora collegato. Configurare il Worker Cloudflare in <code>config.js</code> prima di pubblicare questa pagina.</p>
       </div>
       <div id="signin" class="pane hidden">
-        <div class="pill">ACCESSO FIREFOX</div>
+        <div class="pill">ACCESSO</div>
         <h1>Accedi a HTSport</h1>
-        <p>Il Firefox già registrato viene riconosciuto senza PIN, impronta o Passkey.</p>
-        <button id="browserSignInBtn" class="button primary hidden" type="button">Accedi da questo Firefox</button>
-        <details class="auth-alternative">
-          <summary>Ho già una Passkey</summary>
-          <p class="hint">Solo se l'hai registrata in precedenza su HTSport.</p>
-          <button id="signInBtn" class="button secondary" type="button">Accedi con Passkey</button>
-        </details>
+        <button id="browserSignInBtn" class="button primary hidden" type="button">Accedi</button>
+        <button id="signInBtn" class="button secondary" type="button">Accedi con Passkey</button>
         <div class="line"><span>PRIMA REGISTRAZIONE — RICHIESTA DI APPROVAZIONE</span></div>
         <form id="registerForm" novalidate>
           <label for="username">Il tuo nome (visibile all’amministratore)</label>
@@ -42,7 +37,7 @@
           <summary>Preferisco registrarmi con Passkey (facoltativa)</summary>
           <button id="registerPasskeyBtn" class="button secondary" type="button">Registra con Passkey</button>
         </details>
-        <p class="hint">Firefox conserva una sola chiave crittografica per questo profilo. Non può essere registrata due volte nel database. L'approvazione dell'amministratore è sempre obbligatoria.</p>
+        <p class="hint">La registrazione richiede l'approvazione dell'amministratore.</p>
       </div>
 
       <div id="adminPasswordLogin" class="pane hidden">
