@@ -21,6 +21,8 @@ input:focus,textarea:focus,select:focus { border-color:var(--accent); box-shadow
 .line:before,.line:after { content:""; height:1px; background:var(--line); flex:1; }
 .textlink { border:0; background:none; padding:0; color:var(--accent); cursor:pointer; font:inherit; text-decoration:underline; text-underline-offset:2px; }
 .textlink:hover { color:#bbd8ff; }
+.registration-status { margin:10px 0 0; padding:9px 11px; border-radius:8px; background:#1c3046; border:1px solid #375779; color:#dbeaff; font-size:12px; line-height:1.45; }
+.registration-status.registration-error { background:#38232b; border-color:#864653; color:#ffced5; }
 .approval-feedback { border:1px solid #536d93; background:#1b2e4a; color:#d7e8ff; padding:12px; border-radius:10px; margin:12px 0; font-size:13px; }
 .message { border:1px solid #824251; color:#ffc1c8; background:#3c1e2a; padding:12px; border-radius:10px; margin:15px 0 0; font-size:12px; overflow-wrap:anywhere; }
 .spinner { border:3px solid #34445d; border-top-color:#8bb5ff; width:33px; height:33px; border-radius:50%; animation:spin .85s linear infinite; }
