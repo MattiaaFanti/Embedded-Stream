@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
-  const views = ['loading','setup','signin','pending','welcome','adminPasswordLogin'];
+  const views = ['loading','setup','offlineGate','signin','pending','welcome','adminPasswordLogin'];
   let account = null, redirectTimer = null;
   const PENDING_NAME_KEY = 'htsport-pending-username-v2';
   function getPendingName() {
@@ -14,11 +14,31 @@
       else sessionStorage.removeItem(PENDING_NAME_KEY);
     } catch {}
   }
+  // The guide is a prerequisite for NEW registration, not for existing
+  // accounts or administrators. A browser cannot verify external installation,
+  // so completion is explicitly confirmed by the user.
+  const GUIDE_KEY = 'sport-guide-completed-v1';
+  const GUIDE_OPENED = 'sport-guide-opened-v1';
+  function guideCompleted() {
+    try {
+      return localStorage.getItem(GUIDE_KEY) === '1' ||
+        localStorage.getItem('htsport-guide-seen-v1') === '1';
+    } catch { return false; }
+  }
+  function syncGuideStep() {
+    const done = guideCompleted();
+    $('installFirst').classList.toggle('hidden', done);
+    $('registrationAfterGuide').classList.toggle('hidden', !done);
+    $('confirmInstallGuide').disabled = !done &&
+      (() => { try { return sessionStorage.getItem(GUIDE_OPENED) !== '1'; }
+        catch { return true; } })();
+  }
   function show(id) {
     views.forEach(v => $(v).classList.toggle('hidden', v !== id));
     $('gate').classList.remove('hidden');
     $('player').classList.add('hidden');
     $('message').classList.add('hidden');
+    if (id === 'signin') syncGuideStep();
     if (id === 'signin' && window.HTBrowserIdentity) {
       // A user without a saved browser key doesn't need a misleading login
       // button. Native Passkey access remains available behind user choice.
@@ -54,7 +74,7 @@
       BROWSER_KEY_CORRUPT: 'La chiave salvata in Firefox non è più valida. Non viene sostituita automaticamente per evitare di cambiare identificativo.',
       BROWSER_KEY_MISSING: 'Questo Firefox non è stato ancora registrato. Usa il modulo di prima registrazione.',
       BROWSER_KEY_UNKNOWN: 'La chiave di Firefox non è associata a un account attivo nel database. Se l’account è stato eliminato, puoi registrarlo nuovamente.',
-      BROWSER_ALREADY_REGISTERED: 'Questo Firefox è già registrato. Usa Accedi da questo Firefox anziché creare un altro account.',
+      BROWSER_ALREADY_REGISTERED: 'Questo browser è già registrato. Usa Accedi anziché creare un altro account.',
       BROWSER_WORKER_UPDATE_REQUIRED: 'Il Worker Cloudflare deve essere aggiornato alla versione 1.4.10.',
       BROWSER_DB_UPDATE_REQUIRED: 'La nuova tabella browser_credentials non è ancora presente su Cloudflare D1. La registrazione Firefox non può essere completata.',
       INVALID_BROWSER_SIGNATURE: 'La verifica crittografica del browser non è riuscita.',
@@ -82,7 +102,7 @@
   // Se lo userscript originale crea davvero la sua barra nello stesso DOM,
   // lasciamo quella originale e vi aggiungiamo soltanto i link admin.
   // Altrimenti e' mostrata la barra nativa della pagina (senza doppioni).
-  const WEB_VERSION = '1.0.0';
+  const WEB_VERSION = '1.1.0';
   const nativeBar = $('htsportNativeStatus');
   const nativeActionsHost = $('htsportStatusRight');
   const adminActions = $('adminActions');
@@ -306,7 +326,7 @@
     if (!statusTimer) statusTimer = setInterval(updateStatus, 60000);
     if (!$('htsport-frame')) {
       const frame = document.createElement('iframe');
-      frame.id = 'htsport-frame'; frame.title = 'HTSport';
+      frame.id = 'htsport-frame'; frame.title = 'Sport';
       frame.src = 'https://htsport.info/';
       frame.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
       frame.setAttribute('allowfullscreen', '');
@@ -335,13 +355,9 @@
     }
     if (u.status !== 'active') { show('signin'); return; }
     setPendingName('');
-    const key = 'htsport-guide-seen-v1';
-    if (!localStorage.getItem(key)) {
-      localStorage.setItem(key, '1');
-      $('welcomeTitle').textContent = 'Benvenuto, ' + u.username;
-      show('welcome');
-      redirectTimer = setTimeout(() => location.assign(HTAuth.installUrl), 1500);
-    } else stream();
+    // The installation guide is now completed before signup, not on the
+    // first approved login. Never redirect an approved user away from Sport.
+    stream();
   }
   const MANUAL_LOGOUT_KEY = 'htsport-manual-logout-v1';
   const manualLogout = () => { try { return localStorage.getItem(MANUAL_LOGOUT_KEY) === '1'; } catch { return false; } };
@@ -428,6 +444,12 @@
     const username = $('username').value.trim().replace(/\s+/g, ' ');
     status.classList.remove('hidden', 'registration-error');
     $('message').classList.add('hidden');
+    if (!guideCompleted()) {
+      syncGuideStep();
+      status.textContent = 'Completa prima l’installazione guidata.';
+      status.classList.add('registration-error');
+      return;
+    }
     if (registrationInProgress) {
       status.textContent = 'Registrazione già avviata.';
       return;
@@ -501,6 +523,16 @@
       button.textContent = defaultLabel;
     }
   }
+  $('startInstallGuide').href = HTAuth.installUrl;
+  $('startInstallGuide').addEventListener('click', () => {
+    try { sessionStorage.setItem(GUIDE_OPENED, '1'); } catch {}
+    $('confirmInstallGuide').disabled = false;
+  });
+  $('confirmInstallGuide').addEventListener('click', () => {
+    if ($('confirmInstallGuide').disabled) return;
+    try { localStorage.setItem(GUIDE_KEY, '1'); } catch {}
+    syncGuideStep();
+  });
   $('registerBtn').addEventListener('click', () => { void requestRegistration(); });
   $('registerPasskeyBtn').addEventListener('click', () => { void requestRegistration('passkey'); });
   $('registerForm').addEventListener('submit', event => {
