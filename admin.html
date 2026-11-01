@@ -53,7 +53,7 @@
     <p id="presenceInfo" class="hint presence-note" role="status" aria-live="polite">Verifica dispositivi online...</p>
     <div class="tabs">
       <button class="tab active" data-tab="users" type="button">Utenti</button>
-      <button class="tab" data-tab="devices" type="button">Passkey / dispositivi</button>
+      <button class="tab" data-tab="devices" type="button">Credenziali / dispositivi</button>
       <button class="tab" data-tab="licenses" type="button">Licenze e seriali</button>
       <button class="tab" data-tab="audit" type="button">Registro attività</button>
     </div>
@@ -64,8 +64,8 @@
     </section>
     <section id="tab-devices" class="box hidden">
       <h2>Credenziali registrate</h2>
-      <p>La revoca disabilita una singola Passkey. Le Passkey sincronizzate non identificano in modo certo un singolo hardware.</p>
-      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>ID Passkey</th><th>Tipo</th><th>Ultimo uso</th><th>Stato</th><th>Azione</th></tr></thead><tbody id="devicesBody"></tbody></table></div>
+      <p>La revoca disabilita una singola credenziale, Passkey o chiave browser Firefox. Le chiavi Firefox identificano il profilo del browser, non il telefono fisico.</p>
+      <div class="tablewrap"><table><thead><tr><th>Utente</th><th>ID credenziale</th><th>Tipo</th><th>Ultimo uso</th><th>Stato</th><th>Azione</th></tr></thead><tbody id="devicesBody"></tbody></table></div>
     </section>
     <section id="tab-licenses" class="hidden">
       <div class="box">
