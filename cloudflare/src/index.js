@@ -112,7 +112,7 @@ function validateName(v) {
   if (name.length < 2 || name.length > 40 || /[<>\\]/.test(name)) throw new Error('INVALID_USERNAME');
   return name;
 }
-const rp = (env) => ({ rpName: 'HTSport Access', rpID: env.RP_ID });
+const rp = (env) => ({ rpName: 'Sport Access', rpID: env.RP_ID });
 async function registrationOptions(env, username, purpose) {
   const userId = uuid();
   // Escludi le Passkey gia' registrate, anche se l'utente cambia nome.
@@ -295,12 +295,31 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
+  // Check the upstream before embedding it: the frontend receives only a
+  // boolean and never a failed external URL or browser DNS error message.
+  // Static destination: no user-controlled host/URL can be supplied.
+  if (path === '/api/stream/check' && method === 'GET') {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5500);
+    try {
+      const response = await fetch('https://htsport.info/', {
+        method: 'GET', redirect: 'follow', cache: 'no-store',
+        signal: controller.signal, headers: { Accept: 'text/html' }
+      });
+      try { await response.body?.cancel(); } catch {}
+      return ok({ available: response.ok, checkedAt: now() });
+    } catch {
+      return ok({ available: false, checkedAt: now() });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
   if (path === '/api/health' && method === 'GET') {
     // The GitHub-linked Worker may deploy before the admin applies D1 migration.
     const row = await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='browser_credentials'"
     ).first();
-    return ok({ online: true, version: '1.4.12', browserKeyReady: !!row });
+    return ok({ online: true, version: '1.4.13', browserKeyReady: !!row });
   }
 
   // Browser-key enrollment never opens a native Passkey dialog. The same
