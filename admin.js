@@ -128,17 +128,46 @@
         const remove = button(deleteCell, '×', async () => {
           if (!confirm('Eliminare definitivamente l’utente "' + u.username +
             '"? Verranno eliminate anche le sue Passkey e sessioni. Le licenze rimarranno non assegnate.')) return;
-          const response = await HTAuth.call('/api/admin/users/' + encodeURIComponent(u.id) + '/delete', {});
-          if (!response.deleted) throw Error('Eliminazione non confermata dal server.');
-          // La riga sparisce appena il Worker conferma l'eliminazione.
-          // Aggiorna anche il conteggio delle Passkey e le licenze assegnate.
+          // Nascondi subito la riga e aggiorna tutti i contatori senza
+          // attendere alcun reload. Mantieni uno snapshot per il rollback.
+          const oldUsers = state.users;
+          const oldCredentials = state.credentials;
+          const oldAssigned = new Map(state.licenses.map(lic => [lic.id, lic.assignedUserId]));
           state.users = state.users.filter(user => user.id !== u.id);
           state.credentials = state.credentials.filter(cred => cred.user_id !== u.id);
           state.licenses.forEach(lic => {
             if (lic.assignedUserId === u.id) lic.assignedUserId = null;
           });
-          addAudit('user_deleted', u.id);
           refreshLocalTables();
+          try {
+            const url = '/api/admin/users/' + encodeURIComponent(u.id) + '/delete';
+            let deleted = false;
+            try {
+              const response = await HTAuth.call(url, {});
+              deleted = response.deleted === true;
+            } catch (err) {
+              // Compatibilità con i Worker precedenti: potevano restituire
+              // USER_NOT_FOUND dopo aver già eliminato realmente l'utente.
+              // Verifica il database invece di mostrare un falso errore.
+              const remote = await HTAuth.call('/api/admin/users').catch(() => null);
+              if (remote && Array.isArray(remote.users) &&
+                  !remote.users.some(user => user.id === u.id)) deleted = true;
+              else throw err;
+            }
+            if (!deleted) throw Error('Eliminazione non confermata dal server.');
+            addAudit('user_deleted', u.id);
+            renderAudit();
+          } catch (err) {
+            // Il server non ha confermato la cancellazione: ripristina la
+            // riga, le credenziali e le assegnazioni senza reload della pagina.
+            state.users = oldUsers;
+            state.credentials = oldCredentials;
+            state.licenses.forEach(lic => {
+              if (oldAssigned.has(lic.id)) lic.assignedUserId = oldAssigned.get(lic.id);
+            });
+            refreshLocalTables();
+            throw err;
+          }
         }, true);
         remove.classList.add('delete-user-btn');
         remove.setAttribute('aria-label', 'Elimina definitivamente ' + u.username);
