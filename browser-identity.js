@@ -101,6 +101,7 @@
         (parts[1] === 4 && parts[2] < 10)))) {
       throw Error('BROWSER_WORKER_UPDATE_REQUIRED');
     }
+    if (health.browserKeyReady !== true) throw Error('BROWSER_DB_UPDATE_REQUIRED');
   }
   async function register(username, onProgress) {
     const progress = m => { if (typeof onProgress === 'function') onProgress(m); };
