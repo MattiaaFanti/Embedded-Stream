@@ -340,6 +340,21 @@
     streamProbeFailures = 0;
     $('streamUnavailable').classList.add('hidden');
   }
+  // When the upstream blocks Cloudflare datacenter traffic but is reachable
+  // from Firefox, a browser-side no-CORS HEAD avoids a false offline screen.
+  // Opaque responses prove transport reachability, not HTTP success.
+  async function browserCanReachStream() {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      await fetch('https://htsport.info/', {
+        method: 'HEAD', mode: 'no-cors', cache: 'no-store',
+        signal: controller.signal
+      });
+      return true;
+    } catch { return false; }
+    finally { clearTimeout(timer); }
+  }
   async function checkStreamAndLoad(force = false) {
     if (streamProbeBusy || !account || account.status !== 'active' ||
         $('player').classList.contains('hidden')) return;
@@ -357,7 +372,13 @@
       const result = await HTAuth.call('/api/stream/check');
       if (generation !== streamProbeGeneration || token !== HTAuth.getToken() ||
           $('player').classList.contains('hidden')) return;
-      if (!result.available) throw Error('STREAM_UNAVAILABLE');
+      // Confirm from Firefox if Cloudflare cannot reach the upstream; avoid
+      // denying video to legitimate users because of bot/datacenter blocking.
+      if (!result.available && !(await browserCanReachStream()))
+        throw Error('STREAM_UNAVAILABLE');
+      if (!navigator.onLine) throw Error('STREAM_UNAVAILABLE');
+      if (generation !== streamProbeGeneration ||
+          token !== HTAuth.getToken()) return;
       streamProbeFailures = 0;
       $('streamUnavailable').classList.add('hidden');
       if (!$('htsport-frame')) {
