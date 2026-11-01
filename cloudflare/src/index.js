@@ -261,7 +261,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.6' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.7' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -351,12 +351,20 @@ async function route(request, env) {
     const b = await readJSON(request);
     if (!presenceIdOK(b.deviceId) || !presenceIdOK(b.tabId) ||
         !['home', 'player'].includes(b.area)) return fail('INVALID_PRESENCE', 400);
-    await env.DB.prepare(`
-      INSERT INTO presence_tabs(user_id,device_id,tab_id,area,last_seen_at)
-      VALUES(?,?,?,?,?)
-      ON CONFLICT(user_id,device_id,tab_id) DO UPDATE SET
-        area=excluded.area,last_seen_at=excluded.last_seen_at
-    `).bind(user.id, b.deviceId, b.tabId, b.area, now()).run();
+    const seenAt = now();
+    // Reuse the existing last_login_at field for "last online" (including
+    // long-running sessions), without requiring any new D1 migration.
+    // A single D1 batch writes presence and the durable last-online time.
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO presence_tabs(user_id,device_id,tab_id,area,last_seen_at)
+        VALUES(?,?,?,?,?)
+        ON CONFLICT(user_id,device_id,tab_id) DO UPDATE SET
+          area=excluded.area,last_seen_at=excluded.last_seen_at
+      `).bind(user.id, b.deviceId, b.tabId, b.area, seenAt),
+      env.DB.prepare("UPDATE users SET last_login_at=? WHERE id=? AND role='user' AND status='active'")
+        .bind(seenAt, user.id)
+    ]);
     // Expired tabs no longer count. Remove old entries occasionally so
     // page crashes cannot leave an unbounded table.
     await env.DB.prepare('DELETE FROM presence_tabs WHERE last_seen_at < ?').bind(now() - 86400).run();
@@ -366,8 +374,13 @@ async function route(request, env) {
     const user = await auth(env, request);
     const b = await readJSON(request);
     if (!presenceIdOK(b.deviceId) || !presenceIdOK(b.tabId)) return fail('INVALID_PRESENCE', 400);
-    await env.DB.prepare('DELETE FROM presence_tabs WHERE user_id=? AND device_id=? AND tab_id=?')
-      .bind(user.id, b.deviceId, b.tabId).run();
+    // Record the actual exit time when the browser notifies us reliably.
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM presence_tabs WHERE user_id=? AND device_id=? AND tab_id=?')
+        .bind(user.id, b.deviceId, b.tabId),
+      env.DB.prepare("UPDATE users SET last_login_at=? WHERE id=? AND role='user' AND status='active'")
+        .bind(now(), user.id)
+    ]);
     return ok({ closed: true });
   }
   if (!path.startsWith('/api/admin/')) return fail('NOT_FOUND', 404);
@@ -383,8 +396,16 @@ async function route(request, env) {
     const devices = rows.results.map(r => ({
       userId: r.user_id, deviceId: r.device_id, lastSeen: r.last_seen
     }));
+    // Return durable last-online timestamps even for offline users. The admin
+    // page refreshes this endpoint every five seconds without reloading.
+    const lastOnlineRows = await env.DB.prepare(
+      'SELECT id,last_login_at FROM users WHERE last_login_at IS NOT NULL ORDER BY created_at DESC LIMIT 500'
+    ).all();
     return ok({
       devices,
+      lastOnline: lastOnlineRows.results.map(r => ({
+        userId: r.id, lastOnlineAt: r.last_login_at
+      })),
       onlineDevices: devices.length,
       onlineUsers: new Set(devices.map(d => d.userId)).size,
       timeoutSeconds: presenceTTL,
