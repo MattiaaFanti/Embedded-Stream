@@ -613,9 +613,14 @@ async function route(request, env) {
     // D1 batch is transactional. The result metadata of a multi-statement
     // batch must not be used to infer that the user still exists: verify
     // the final database state explicitly instead.
+    const browserTable = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='browser_credentials'"
+    ).first();
     const results = await env.DB.batch([
       env.DB.prepare('DELETE FROM credentials WHERE user_id=?').bind(target),
-      env.DB.prepare('DELETE FROM browser_credentials WHERE user_id=?').bind(target),
+      ...(browserTable ? [
+        env.DB.prepare('DELETE FROM browser_credentials WHERE user_id=?').bind(target)
+      ] : []),
       env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(target),
       env.DB.prepare("DELETE FROM users WHERE id=? AND role='user'").bind(target)
     ]);
