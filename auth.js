@@ -67,9 +67,13 @@
   // browser has a cached frontend version. This fails closed until deployment.
   async function requireCurrentRegistrationWorker() {
     const status = await call('/api/health');
-    const parts = String(status.version || '').split('.');
-    if (parts.length !== 3 || parts[0] !== '1' || !Number.isInteger(Number(parts[1])) ||
-        Number(parts[1]) < 3) throw Error('WORKER_UPDATE_REQUIRED');
+    const parts = String(status.version || '').split('.').map(Number);
+    // Version 1.4.2 adds a pending session and username-scoped login.
+    if (parts.length !== 3 || parts.some(n => !Number.isInteger(n) || n < 0) ||
+        parts[0] < 1 ||
+        (parts[0] === 1 && (parts[1] < 4 || (parts[1] === 4 && parts[2] < 2)))) {
+      throw Error('WORKER_UPDATE_REQUIRED');
+    }
   }
   // No preliminary navigator.credentials.get(): on an unregistered device
   // this prompts for an unrelated login and can stall the signup for minutes.
@@ -107,6 +111,7 @@
   }
   async function login(username) {
     const scopedName = typeof username === 'string' ? username.trim().replace(/\s+/g, ' ') : '';
+    if (scopedName) await requireCurrentRegistrationWorker();
     const result = await call('/api/login/options', scopedName ? { username: scopedName } : {});
     const credential = await getCredential(result.options);
     let saved;
