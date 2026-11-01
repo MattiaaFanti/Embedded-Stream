@@ -194,12 +194,33 @@ async function adminPasswordValid(env, candidate) {
   for (let i = 0; i < expected.length; i++) difference |= provided[i] ^ expected[i];
   return difference === 0;
 }
-async function loginOptions(env) {
+async function loginOptions(env, requestedUsername) {
+  // Optional username-scoped login, used when a user registered again after
+  // deletion. Only credentials of the CURRENT account can be offered.
+  let allowCredentials = [];
+  let username = null;
+  if (typeof requestedUsername === 'string' && requestedUsername.trim()) {
+    username = validateName(requestedUsername);
+    const found = await env.DB.prepare(`
+      SELECT c.id,c.transports
+      FROM credentials c JOIN users u ON u.id=c.user_id
+      WHERE lower(trim(u.username))=lower(trim(?)) AND c.revoked_at IS NULL
+      ORDER BY c.created_at DESC LIMIT 100
+    `).bind(username).all();
+    if (!found.results.length) throw new Error('LOGIN_CREDENTIALS_UNAVAILABLE');
+    allowCredentials = found.results.map(c => ({
+      id: c.id,
+      transports: JSON.parse(c.transports || '[]')
+    }));
+  }
   const options = await generateAuthenticationOptions({
     rpID: env.RP_ID, userVerification: 'required',
-    allowCredentials: [], timeout: 120000
+    allowCredentials, timeout: 120000
   });
-  return { requestId: await challenge(env, 'login', options.challenge, {}), options };
+  return {
+    requestId: await challenge(env, 'login', options.challenge, { username }),
+    options
+  };
 }
 async function verifyLogin(env, body) {
   const ctx = await consume(env, body.requestId, 'login');
@@ -208,6 +229,10 @@ async function verifyLogin(env, body) {
     'SELECT c.*,u.status,u.username,u.role FROM credentials c JOIN users u ON u.id=c.user_id WHERE c.id=? AND c.revoked_at IS NULL'
   ).bind(credentialId).first();
   if (!row) throw new Error('DEVICE_REVOKED_OR_UNKNOWN');
+  // The requested username must also match the verified credential account.
+  if (ctx.username && row.username.toLocaleLowerCase() !== ctx.username.toLocaleLowerCase()) {
+    throw new Error('DEVICE_REVOKED_OR_UNKNOWN');
+  }
   if (row.status === 'banned') throw new Error('BANNED');
   const checked = await verifyAuthenticationResponse({
     response: body.credential,
@@ -236,7 +261,7 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.1' });
+  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.2' });
   if (method === 'POST' && path === '/api/register/options') {
     await rate(env, request, 'register', 12, 3600);
     const b = await readJSON(request);
@@ -251,7 +276,12 @@ async function route(request, env) {
     if (already) return fail('USERNAME_ALREADY_REGISTERED', 409);
     await insertRegistration(env, ctx.username, 'user', 'pending', info, ctx.userId);
     await audit(env, ctx.userId, 'register', ctx.userId);
-    return ok({ username: ctx.username, status: 'pending' }, 201);
+    // The user already proved ownership of the new Passkey at registration.
+    // Issue a pending session to check admin approval without a second
+    // WebAuthn prompt. It does NOT grant administrative privileges.
+    const session = await issueSession(env, ctx.userId);
+    return ok({ userId: ctx.userId, username: ctx.username, role: 'user',
+      status: 'pending', ...session }, 201);
   }
   // Proof of an existing Passkey, without issuing a new session or creating an account.
   // Uses the same server-verified WebAuthn assertion as normal login.
@@ -261,7 +291,8 @@ async function route(request, env) {
   }
   if (method === 'POST' && path === '/api/login/options') {
     await rate(env, request, 'login', 90, 3600);
-    return ok(await loginOptions(env));
+    const body = await readJSON(request);
+    return ok(await loginOptions(env, body.username));
   }
   if (method === 'POST' && path === '/api/login/verify') {
     const user = await verifyLogin(env, await readJSON(request));
@@ -434,7 +465,7 @@ export default {
       }
     } catch (err) {
       const message = err && err.message || 'SERVER_ERROR';
-      const recognized = /^(LOGIN_REQUIRED|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|USERNAME_ALREADY_REGISTERED|REGISTRATION_FAILED|REGISTRATION_CAPACITY_REACHED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
+      const recognized = /^(LOGIN_REQUIRED|LOGIN_CREDENTIALS_UNAVAILABLE|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|USERNAME_ALREADY_REGISTERED|REGISTRATION_FAILED|REGISTRATION_CAPACITY_REACHED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
       const status = message === 'RATE_LIMIT' ? 429 :
         message === 'LOGIN_REQUIRED' ? 401 :
         ['BANNED','ADMIN_REQUIRED','DEVICE_REVOKED_OR_UNKNOWN'].includes(message) ? 403 :
