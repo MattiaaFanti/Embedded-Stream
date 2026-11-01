@@ -216,8 +216,9 @@
   }
   $('signInBtn').addEventListener('click', function () {
     runButton(this, async () => {
-      const name = $('signInUsername').value.trim().replace(/\s+/g, ' ');
-      await HTAuth.login(name || undefined);
+      // Normal login is identified solely by the verified Passkey.
+      // Username-scoped login is reserved for legacy approval recovery.
+      await HTAuth.login();
       await refresh();
     });
   });
