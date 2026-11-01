@@ -208,6 +208,9 @@ async function browserChallenge(env, purpose, payload) {
     challenge: value
   };
 }
+function missingBrowserTable(error) {
+  return /no such table:?\\s*browser_credentials/i.test(String(error && error.message || error));
+}
 async function adminExists(env) {
   const row = await env.DB.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").first();
   return !!row;
@@ -292,7 +295,13 @@ async function licenses(env) {
 }
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname, method = request.method;
-  if (path === '/api/health' && method === 'GET') return ok({ online: true, version: '1.4.10' });
+  if (path === '/api/health' && method === 'GET') {
+    // The GitHub-linked Worker may deploy before the admin applies D1 migration.
+    const row = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='browser_credentials'"
+    ).first();
+    return ok({ online: true, version: '1.4.10', browserKeyReady: !!row });
+  }
 
   // Browser-key enrollment never opens a native Passkey dialog. The same
   // saved IndexedDB key is reused for future enrollment after account deletion.
@@ -545,21 +554,38 @@ async function route(request, env) {
     return ok({ users: rows.results, licenses: lic.total });
   }
   if (method === 'GET' && path === '/api/admin/users') {
-    const users = await env.DB.prepare(
-      "SELECT u.id,u.username,u.role,u.status,u.created_at,u.last_login_at,((SELECT COUNT(*) FROM credentials c WHERE c.user_id=u.id AND c.revoked_at IS NULL) + (SELECT COUNT(*) FROM browser_credentials b WHERE b.user_id=u.id AND b.revoked_at IS NULL)) AS credentials FROM users u ORDER BY u.created_at DESC LIMIT 500"
-    ).all();
+    let users;
+    try {
+      users = await env.DB.prepare(
+        "SELECT u.id,u.username,u.role,u.status,u.created_at,u.last_login_at,((SELECT COUNT(*) FROM credentials c WHERE c.user_id=u.id AND c.revoked_at IS NULL) + (SELECT COUNT(*) FROM browser_credentials b WHERE b.user_id=u.id AND b.revoked_at IS NULL)) AS credentials FROM users u ORDER BY u.created_at DESC LIMIT 500"
+      ).all();
+    } catch (e) {
+      // Keep Passkey admin management available before D1 migration 0003.
+      if (!missingBrowserTable(e)) throw e;
+      users = await env.DB.prepare(
+        "SELECT u.id,u.username,u.role,u.status,u.created_at,u.last_login_at,COUNT(c.id) AS credentials FROM users u LEFT JOIN credentials c ON c.user_id=u.id AND c.revoked_at IS NULL GROUP BY u.id ORDER BY u.created_at DESC LIMIT 500"
+      ).all();
+    }
     return ok({ users: users.results.map(u => ({ ...u, registrationSerial: registrationSerial(u.id) })) });
   }
   if (method === 'GET' && path === '/api/admin/credentials') {
-    const items = await env.DB.prepare(
-      `SELECT id,user_id,created_at,last_used_at,device_type,backed_up,revoked_at,username,credential_kind FROM (
-        SELECT c.id,c.user_id,c.created_at,c.last_used_at,c.device_type,c.backed_up,c.revoked_at,u.username,'passkey' AS credential_kind
-        FROM credentials c JOIN users u ON u.id=c.user_id
-        UNION ALL
-        SELECT b.id,b.user_id,b.created_at,b.last_used_at,'Firefox · chiave browser' AS device_type,0 AS backed_up,b.revoked_at,u.username,'browser' AS credential_kind
-        FROM browser_credentials b JOIN users u ON u.id=b.user_id
-      ) ORDER BY created_at DESC LIMIT 500`
-    ).all();
+    let items;
+    try {
+      items = await env.DB.prepare(
+        `SELECT id,user_id,created_at,last_used_at,device_type,backed_up,revoked_at,username,credential_kind FROM (
+          SELECT c.id,c.user_id,c.created_at,c.last_used_at,c.device_type,c.backed_up,c.revoked_at,u.username,'passkey' AS credential_kind
+          FROM credentials c JOIN users u ON u.id=c.user_id
+          UNION ALL
+          SELECT b.id,b.user_id,b.created_at,b.last_used_at,'Firefox · chiave browser' AS device_type,0 AS backed_up,b.revoked_at,u.username,'browser' AS credential_kind
+          FROM browser_credentials b JOIN users u ON u.id=b.user_id
+        ) ORDER BY created_at DESC LIMIT 500`
+      ).all();
+    } catch (e) {
+      if (!missingBrowserTable(e)) throw e;
+      items = await env.DB.prepare(
+        'SELECT c.id,c.user_id,c.created_at,c.last_used_at,c.device_type,c.backed_up,c.revoked_at,u.username FROM credentials c JOIN users u ON u.id=c.user_id ORDER BY c.created_at DESC LIMIT 500'
+      ).all();
+    }
     return ok({ credentials: items.results });
   }
   const statusRoute = path.match(/^\/api\/admin\/users\/([a-f0-9-]+)\/status$/i);
@@ -677,8 +703,9 @@ export default {
         res = await route(request, env);
       }
     } catch (err) {
-      const message = err && err.message || 'SERVER_ERROR';
-      const recognized = /^(LOGIN_REQUIRED|LOGIN_CREDENTIALS_UNAVAILABLE|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|USERNAME_ALREADY_REGISTERED|REGISTRATION_FAILED|REGISTRATION_CAPACITY_REACHED|DEVICE_REVOKED_OR_UNKNOWN|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
+      const message = missingBrowserTable(err) ? 'BROWSER_DB_UPDATE_REQUIRED' :
+        (err && err.message || 'SERVER_ERROR');
+      const recognized = /^(LOGIN_REQUIRED|LOGIN_CREDENTIALS_UNAVAILABLE|ADMIN_REQUIRED|BANNED|CHALLENGE_|PASSKEY_INVALID|PASSKEY_ALREADY_REGISTERED|USERNAME_ALREADY_REGISTERED|REGISTRATION_FAILED|REGISTRATION_CAPACITY_REACHED|DEVICE_REVOKED_OR_UNKNOWN|BROWSER_|RATE_LIMIT|INVALID_|Payload too large)/.test(message);
       const status = message === 'RATE_LIMIT' ? 429 :
         message === 'LOGIN_REQUIRED' ? 401 :
         ['BANNED','ADMIN_REQUIRED','DEVICE_REVOKED_OR_UNKNOWN'].includes(message) ? 403 :
