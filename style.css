@@ -71,3 +71,10 @@ td { overflow-wrap:anywhere; } td code { font-size:11px; color:#c6d8f7; }
 .formgrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .formgrid .wide { grid-column:1 / -1; } .inlineform { display:flex; gap:10px; align-items:end; }
 .inlineform>* { flex:1; } .monotext { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; word-break:break-all; }
 @media(max-width:650px) { .panel { padding:24px 20px; } .htsport-native-status { padding:7px 9px; gap:5px; } .htsport-status-main { gap:6px; } .htsport-status-right { gap:6px; } .admin-bar-actions { gap:7px; font-size:11px; } .admin { padding:12px; } .formgrid { grid-template-columns:1fr; } .inlineform { display:block; } }
+
+/* Keep optional Passkey controls collapsed unless explicitly requested. */
+.auth-alternative { margin:12px 0; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+.auth-alternative summary { color:var(--muted); cursor:pointer; font-size:13px; }
+.auth-alternative[open] summary { margin-bottom:12px; color:var(--text); }
+.auth-alternative .button { width:100%; }
+.auth-alternative .hint { margin:0 0 10px; }
