@@ -300,7 +300,7 @@ async function route(request, env) {
     const row = await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='browser_credentials'"
     ).first();
-    return ok({ online: true, version: '1.4.11', browserKeyReady: !!row });
+    return ok({ online: true, version: '1.4.12', browserKeyReady: !!row });
   }
 
   // Browser-key enrollment never opens a native Passkey dialog. The same
