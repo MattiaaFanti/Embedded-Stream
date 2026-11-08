@@ -18,7 +18,6 @@
   // accounts or administrators. A browser cannot verify external installation,
   // so completion is explicitly confirmed by the user.
   const GUIDE_KEY = 'sport-guide-completed-v1';
-  const GUIDE_OPENED = 'sport-guide-opened-v1';
   function guideCompleted() {
     try {
       return localStorage.getItem(GUIDE_KEY) === '1' ||
@@ -30,9 +29,6 @@
     $('installFirst').classList.toggle('hidden', done);
     $('registrationAfterGuide').classList.toggle('hidden', !done);
     $('passkeyRegistration')?.classList.toggle('hidden', !done);
-    $('confirmInstallGuide').disabled = !done &&
-      (() => { try { return sessionStorage.getItem(GUIDE_OPENED) !== '1'; }
-        catch { return true; } })();
     return done;
   }
   function show(id) {
@@ -530,7 +526,7 @@
     $('message').classList.add('hidden');
     if (!guideCompleted()) {
       syncGuideStep();
-      status.textContent = 'Apri la guida e conferma l’installazione per continuare.';
+      status.textContent = 'Completa la guida e conferma l’installazione per continuare.';
       $('startInstallGuide').focus();
       return;
     }
@@ -608,12 +604,9 @@
     }
   }
   $('startInstallGuide').href = HTAuth.installUrl;
-  $('startInstallGuide').addEventListener('click', () => {
-    try { sessionStorage.setItem(GUIDE_OPENED, '1'); } catch {}
-    $('confirmInstallGuide').disabled = false;
-  });
+  // An older cached page may still have the disabled attribute.
+  $('confirmInstallGuide').disabled = false;
   $('confirmInstallGuide').addEventListener('click', () => {
-    if ($('confirmInstallGuide').disabled) return;
     try { localStorage.setItem(GUIDE_KEY, '1'); } catch {}
     if (syncGuideStep()) {
       $('registerStatus').classList.add('hidden');
