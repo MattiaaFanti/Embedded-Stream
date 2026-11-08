@@ -14,11 +14,14 @@
       else sessionStorage.removeItem(PENDING_NAME_KEY);
     } catch {}
   }
-  // The guide is a prerequisite for NEW registration, not for existing
-  // accounts or administrators. A browser cannot verify external installation,
-  // so completion is explicitly confirmed by the user.
+  // The guide is a prerequisite for new registrations.
   const GUIDE_KEY = 'sport-guide-completed-v1';
+  function isInstallScriptActive() {
+    // The userscript inserts this style when it runs on Sport.
+    return !!document.querySelector('style#htsport-fullscreen-style-v3');
+  }
   function guideCompleted() {
+    if (!isInstallScriptActive()) return false;
     try {
       return localStorage.getItem(GUIDE_KEY) === '1' ||
         localStorage.getItem('htsport-guide-seen-v1') === '1';
@@ -29,6 +32,7 @@
     $('installFirst').classList.toggle('hidden', done);
     $('registrationAfterGuide').classList.toggle('hidden', !done);
     $('passkeyRegistration')?.classList.toggle('hidden', !done);
+    $('confirmInstallGuide').disabled = !isInstallScriptActive();
     return done;
   }
   function show(id) {
@@ -604,9 +608,13 @@
     }
   }
   $('startInstallGuide').href = HTAuth.installUrl;
-  // An older cached page may still have the disabled attribute.
-  $('confirmInstallGuide').disabled = false;
+  const installScriptObserver = new MutationObserver(() => {
+    if (!$('signin').classList.contains('hidden')) syncGuideStep();
+  });
+  installScriptObserver.observe(document.head, { childList: true });
+  installScriptObserver.observe(document.documentElement, { childList: true });
   $('confirmInstallGuide').addEventListener('click', () => {
+    if (!isInstallScriptActive()) return;
     try { localStorage.setItem(GUIDE_KEY, '1'); } catch {}
     if (syncGuideStep()) {
       $('registerStatus').classList.add('hidden');
