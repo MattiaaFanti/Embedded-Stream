@@ -33,6 +33,16 @@
         <button id="browserSignInBtn" class="button primary hidden" type="button">Accedi</button>
         <button id="signInBtn" class="button secondary" type="button">Accedi con Passkey</button>
         <div class="line"><span>PRIMA REGISTRAZIONE</span></div>
+        <form id="registerForm" novalidate>
+          <div id="registrationAfterGuide" class="hidden">
+            <div class="pill">PASSAGGIO 2 DI 2</div>
+            <h2>Richiesta di registrazione</h2>
+            <label for="username">Il tuo nome (visibile all’amministratore)</label>
+            <input id="username" name="username" type="text" autocomplete="nickname" maxlength="40" required placeholder="Scrivi il tuo nome">
+          </div>
+          <button id="registerBtn" class="button primary" type="button">Registrati con chiave Firefox</button>
+          <p id="registerStatus" class="registration-status hidden" role="status" aria-live="polite"></p>
+        </form>
         <section id="installFirst" aria-label="Installazione guidata">
           <div class="pill">PASSAGGIO 1 DI 2</div>
           <h2>Installazione guidata</h2>
@@ -40,21 +50,11 @@
           <a id="startInstallGuide" class="button secondary guide-link" href="https://hattrick-player-control.yaboyo95.workers.dev/" target="_blank" rel="noopener noreferrer">Apri la guida</a>
           <button id="confirmInstallGuide" class="button primary" type="button" disabled>Ho completato l'installazione</button>
         </section>
-        <div id="registrationAfterGuide" class="hidden">
-          <div class="pill">PASSAGGIO 2 DI 2</div>
-          <h2>Richiesta di registrazione</h2>
-        <form id="registerForm" novalidate>
-          <label for="username">Il tuo nome (visibile all’amministratore)</label>
-          <input id="username" name="username" type="text" autocomplete="nickname" maxlength="40" required placeholder="Scrivi il tuo nome">
-          <button id="registerBtn" class="button secondary" type="button">Richiedi registrazione</button>
-          <p id="registerStatus" class="registration-status hidden" role="status" aria-live="polite"></p>
-        </form>
-        <details class="auth-alternative">
+        <details id="passkeyRegistration" class="auth-alternative hidden">
           <summary>Preferisco registrarmi con Passkey (facoltativa)</summary>
           <button id="registerPasskeyBtn" class="button secondary" type="button">Registra con Passkey</button>
         </details>
         <p class="hint">La registrazione richiede l'approvazione dell'amministratore.</p>
-        </div>
       </div>
 
       <div id="adminPasswordLogin" class="pane hidden">
@@ -117,6 +117,6 @@
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js?v=20261101-approval3"></script>
   <script src="browser-identity.js?v=20261101-browserkey2"></script>
-  <script src="site.js?v=20261101-sport-guide1"></script>
+  <script src="site.js?v=20261108-firefox-registration"></script>
 </body>
 </html>

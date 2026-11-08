@@ -29,9 +29,11 @@
     const done = guideCompleted();
     $('installFirst').classList.toggle('hidden', done);
     $('registrationAfterGuide').classList.toggle('hidden', !done);
+    $('passkeyRegistration')?.classList.toggle('hidden', !done);
     $('confirmInstallGuide').disabled = !done &&
       (() => { try { return sessionStorage.getItem(GUIDE_OPENED) !== '1'; }
         catch { return true; } })();
+    return done;
   }
   function show(id) {
     views.forEach(v => $(v).classList.toggle('hidden', v !== id));
@@ -528,8 +530,8 @@
     $('message').classList.add('hidden');
     if (!guideCompleted()) {
       syncGuideStep();
-      status.textContent = 'Completa prima l’installazione guidata.';
-      status.classList.add('registration-error');
+      status.textContent = 'Apri la guida e conferma l’installazione per continuare.';
+      $('startInstallGuide').focus();
       return;
     }
     if (registrationInProgress) {
@@ -559,7 +561,7 @@
     $('registerBtn').disabled = true;
     $('registerPasskeyBtn').disabled = true;
     button.setAttribute('aria-busy', 'true');
-    const defaultLabel = method === 'passkey' ? 'Registra con Passkey' : 'Richiedi registrazione';
+    const defaultLabel = button.textContent;
     button.textContent = 'Registrazione in corso...';
     status.textContent = 'Avvio della registrazione...';
     try {
@@ -613,7 +615,10 @@
   $('confirmInstallGuide').addEventListener('click', () => {
     if ($('confirmInstallGuide').disabled) return;
     try { localStorage.setItem(GUIDE_KEY, '1'); } catch {}
-    syncGuideStep();
+    if (syncGuideStep()) {
+      $('registerStatus').classList.add('hidden');
+      $('username').focus();
+    }
   });
   $('registerBtn').addEventListener('click', () => { void requestRegistration(); });
   $('registerPasskeyBtn').addEventListener('click', () => { void requestRegistration('passkey'); });
