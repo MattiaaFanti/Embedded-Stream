@@ -51,6 +51,12 @@
     try { return validRecord(await getStored()); }
     catch { return false; }
   }
+  async function getIdentityId() {
+    const record = await getStored();
+    if (!record) throw Error('BROWSER_KEY_MISSING');
+    if (!validRecord(record)) throw Error('BROWSER_KEY_CORRUPT');
+    return keyId(record.publicKey);
+  }
   async function getOrCreate() {
     const existing = await getStored();
     if (validRecord(existing)) return existing;
@@ -141,6 +147,6 @@
     return saved;
   }
   window.HTBrowserIdentity = Object.freeze({
-    supported, hasIdentity, register, login
+    supported, hasIdentity, getIdentityId, register, login
   });
 })();
