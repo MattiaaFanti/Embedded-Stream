@@ -506,6 +506,25 @@
   }
   // A browser key is checked without user-facing native authentication.
   // Passkeys remain strictly opt-in through the explicit Passkey button.
+  const identityButton = $('showBrowserKeyBtn');
+  if (identityButton) identityButton.addEventListener('click', function () {
+    runButton(this, async () => {
+      const output = $('browserKeyId');
+      output.textContent = '';
+      $('browserKeyDetails').classList.add('hidden');
+      const id = await HTBrowserIdentity.getIdentityId();
+      output.textContent = id;
+      $('browserKeyDetails').classList.remove('hidden');
+      $('copyBrowserKeyBtn').textContent = 'Copia ID';
+    });
+  });
+  $('copyBrowserKeyBtn')?.addEventListener('click', function () {
+    const button = this;
+    runButton(button, async () => {
+      await navigator.clipboard.writeText($('browserKeyId').textContent);
+      button.textContent = 'ID copiato';
+    }, () => message(Error('Copia non disponibile. Seleziona l’ID oppure invia una schermata.')));
+  });
   $('browserSignInBtn').addEventListener('click', function () {
     runButton(this, async () => {
       if (!window.HTBrowserIdentity) throw Error('BROWSER_KEY_NOT_SUPPORTED');
