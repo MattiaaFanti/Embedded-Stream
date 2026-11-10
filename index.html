@@ -32,6 +32,12 @@
         <h1>Accedi a Sport</h1>
         <button id="browserSignInBtn" class="button primary hidden" type="button">Accedi</button>
         <button id="signInBtn" class="button secondary" type="button">Accedi con Passkey</button>
+        <button id="showBrowserKeyBtn" class="button quiet" type="button">Mostra ID chiave Firefox</button>
+        <div id="browserKeyDetails" class="hidden" aria-live="polite">
+          <p>Confronta questo ID con la credenziale Firefox nel pannello admin. Puoi inviare una schermata: l’ID non contiene la chiave privata.</p>
+          <textarea id="browserKeyId" class="monotext" rows="3" readonly aria-label="ID pubblico della chiave Firefox" spellcheck="false"></textarea>
+          <button id="copyBrowserKeyBtn" class="button secondary" type="button">Copia ID</button>
+        </div>
         <div class="line"><span>PRIMA REGISTRAZIONE</span></div>
         <form id="registerForm" novalidate>
           <div id="registrationAfterGuide" class="hidden">
@@ -116,7 +122,7 @@
   </section>
   <script src="config.js?v=20261031-1430"></script>
   <script src="auth.js?v=20261101-approval3"></script>
-  <script src="browser-identity.js?v=20261101-browserkey2"></script>
-  <script src="site.js?v=20261108-script-detection"></script>
+  <script src="browser-identity.js?v=20261110-key-id1"></script>
+  <script src="site.js?v=20261110-key-id1"></script>
 </body>
 </html>
